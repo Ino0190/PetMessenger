@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostPet - ポストペット</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif; overflow: hidden; height: 100vh; }
+
+.app { display: flex; height: 100vh; }
+
+/* 左: ペットの部屋 */
+.room-area { flex: 1; position: relative; overflow: hidden; }
+#roomCanvas { width: 100%; height: 100%; display: block; cursor: default; }
+.room-area.petting #roomCanvas { cursor: grab; }
+.room-area.petting #roomCanvas:active { cursor: grabbing; }
+
+/* ペット情報バー */
+.pet-bar {
+  position: absolute; top: 12px; left: 12px; right: 12px;
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(20,20,40,0.85); backdrop-filter: blur(8px);
+  border-radius: 16px; padding: 8px 16px; z-index: 10;
+}
+.pet-bar .pet-name { font-size: 24px; font-weight: 700; color: #fff; }
+.pet-bar .pet-mood { font-size: 20px; color: rgba(255,255,255,0.8); }
+.stat-bars { display: flex; gap: 8px; margin-left: auto; }
+.stat-bar { display: flex; align-items: center; gap: 4px; }
+.stat-bar label { font-size: 16px; color: rgba(255,255,255,0.7); }
+.stat-bar .bar { width: 80px; height: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; overflow: hidden; }
+.stat-bar .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+.bar-hunger .bar-fill { background: #f59e0b; }
+.bar-clean .bar-fill { background: #3b82f6; }
+.bar-happy .bar-fill { background: #ec4899; }
+
+/* アクションボタン */
+.actions {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; z-index: 10;
+}
+.actions button {
+  background: rgba(255,255,255,0.9); backdrop-filter: blur(8px);
+  border: 2px solid rgba(0,0,0,0.1); border-radius: 16px;
+  color: #333; padding: 12px 20px; font-size: 18px; cursor: pointer;
+  transition: all 0.2s; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 72px;
+}
+.actions button .emoji { font-size: 28px; line-height: 1; }
+.actions button .label { font-size: 16px; }
+.actions button:hover { background: #ec4899; color: #fff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(236,72,153,0.3); }
+
+/* 右: メールパネル */
+.mail-panel {
+  width: 420px; background: #16213e; border-left: 1px solid rgba(255,255,255,0.08);
+  display: flex; flex-direction: column;
+}
+.mail-header {
+  padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 8px;
+}
+.mail-header h2 { font-size: 24px; color: #fff; font-weight: 600; }
+.mail-tabs { display: flex; gap: 4px; margin-left: auto; }
+.mail-tabs button {
+  background: none; border: none; color: rgba(255,255,255,0.4);
+  font-size: 16px; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+}
+.mail-tabs button.active { background: rgba(255,255,255,0.1); color: #fff; }
+
+.mail-list { flex: 1; overflow-y: auto; padding: 8px; }
+.mail-item {
+  padding: 12px; border-radius: 12px; margin-bottom: 6px; cursor: pointer;
+  transition: background 0.2s;
+}
+.mail-item:hover { background: rgba(255,255,255,0.06); }
+.mail-item.unread { background: rgba(236,72,153,0.08); }
+.mail-item .from { font-size: 18px; color: #ec4899; font-weight: 600; }
+.mail-item .subject { font-size: 16px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+.mail-item .time { font-size: 14px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+
+/* メール作成 */
+.compose-area {
+  border-top: 1px solid rgba(255,255,255,0.08); padding: 12px;
+}
+.compose-area input, .compose-area textarea {
+  width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; color: #fff; padding: 12px 16px; font-size: 18px;
+  font-family: inherit; resize: none; outline: none;
+}
+.compose-area input { margin-bottom: 8px; }
+.compose-area textarea { height: 80px; margin-bottom: 10px; }
+.compose-area input::placeholder, .compose-area textarea::placeholder { color: rgba(255,255,255,0.3); }
+.send-btn {
+  width: 100%; background: #ec4899; border: none; border-radius: 12px;
+  color: #fff; padding: 14px; font-size: 20px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.send-btn:hover { background: #db2777; }
+
+/* 日記モーダル */
+.diary-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+}
+.diary-overlay.show { display: flex; }
+.diary-card {
+  background: #fefcf3;
+  background-image: repeating-linear-gradient(transparent, transparent 31px, #c8d8e4 31px, #c8d8e4 32px);
+  background-position: 0 60px;
+  border-radius: 4px; padding: 28px 28px 28px 48px; max-width: 440px;
+  width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 0 30px rgba(0,0,0,0.03);
+  position: relative; border-left: 3px solid #e8a0a0;
+}
+/* 綴じ穴 */
+.diary-card::before {
+  content: ''; position: absolute; left: 18px; top: 30px; bottom: 30px; width: 2px;
+  background: repeating-linear-gradient(to bottom, transparent, transparent 20px, #d4b896 20px, #d4b896 22px, transparent 22px, transparent 40px);
+}
+.diary-card h3 { font-size: 22px; color: #5a4a3a; margin-bottom: 16px; font-style: italic; }
+.diary-card p { font-size: 18px; color: #4a3a2a; line-height: 32px; }
+.diary-card .close-diary {
+  position: absolute; top: 12px; right: 12px; background: none; border: none;
+  font-size: 18px; cursor: pointer; color: #8a7a6a;
+}
+
+/* 配達アニメーション */
+.delivery-overlay {
+  position: fixed; inset: 0; background: rgba(26,26,46,0.95);
+  display: none; align-items: center; justify-content: center; z-index: 90;
+  flex-direction: column; gap: 16px;
+}
+.delivery-overlay.show { display: flex; }
+.delivery-text { color: #fff; font-size: 22px; }
+.delivery-pet { font-size: 64px; animation: bounce 0.6s infinite alternate; }
+@keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-12px); } }
+
+/* 通知トースト */
+.toast {
+  position: fixed; top: 20px; right: 20px; background: #ec4899;
+  color: #fff; padding: 14px 24px; border-radius: 12px; font-size: 20px;
+  z-index: 200; opacity: 0; transform: translateY(-10px);
+  transition: all 0.3s;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ペットの部屋 -->
+  <div class="room-area">
+    <div class="pet-bar">
+      <span class="pet-name" id="petName">ミハル</span>
+      <span class="pet-mood" id="petMood">ごきげん 😊</span>
+      <div class="stat-bars">
+        <div class="stat-bar bar-hunger">
+          <label>おなか</label>
+          <div class="bar"><div class="bar-fill" id="hungerBar" style="width:80%"></div></div>
+        </div>
+        <div class="stat-bar bar-clean">
+          <label>きれい</label>
+          <div class="bar"><div class="bar-fill" id="cleanBar" style="width:90%"></div></div>
+        </div>
+        <div class="stat-bar bar-happy">
+          <label>しあわせ</label>
+          <div class="bar"><div class="bar-fill" id="happyBar" style="width:70%"></div></div>
+        </div>
+      </div>
+    </div>
+    <canvas id="roomCanvas"></canvas>
+    <div class="actions">
+      <button onclick="petAction('feed')"><span class="emoji">🍰</span><span class="label">おやつ</span></button>
+      <button onclick="petAction('pet')"><span class="emoji">🤚</span><span class="label">なでる</span></button>
+      <button onclick="petAction('bath')"><span class="emoji">🛁</span><span class="label">おふろ</span></button>
+      <button onclick="petAction('play')"><span class="emoji">🎾</span><span class="label">あそぶ</span></button>
+      <button onclick="showDiary()"><span class="emoji">📔</span><span class="label">にっき</span></button>
+    </div>
+  </div>
+
+  <!-- メールパネル -->
+  <div class="mail-panel">
+    <div class="mail-header">
+      <h2>📮 メール</h2>
+      <div class="mail-tabs">
+        <button class="active" onclick="switchTab('inbox',this)">受信</button>
+        <button onclick="switchTab('sent',this)">送信済</button>
+        <button onclick="switchTab('diary',this)">ひみつ日記</button>
+      </div>
+    </div>
+    <div class="mail-list" id="mailList"></div>
+    <div class="compose-area">
+      <select id="mailTo" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+        border-radius:10px; color:#fff; padding:12px 16px; font-size:18px; font-family:inherit; outline:none; margin-bottom:8px; cursor:pointer;">
+        <option value="" disabled selected>あて先を えらんでね</option>
+      </select>
+      <textarea id="mailBody" placeholder="メッセージを書いてね..."></textarea>
+      <button class="send-btn" onclick="sendMail()">📨 ミハルにおねがいする</button>
+      <button onclick="if(confirm(PET.name+'をおみおくりして、あたらしい ともだちをむかえる？'))resetPet()"
+        style="width:100%; background:none; border:1px solid rgba(255,255,255,0.15); border-radius:12px;
+        color:rgba(255,255,255,0.4); padding:10px; font-size:14px; cursor:pointer; margin-top:8px;
+        transition:all 0.2s; font-family:inherit;"
+        onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'"
+        onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='rgba(255,255,255,0.4)'">
+        🔄 あたらしい ともだちをむかえる
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 日記モーダル -->
+<div class="diary-overlay" id="diaryOverlay">
+  <div class="diary-card">
+    <button class="close-diary" onclick="closeDiary()">✕</button>
+    <h3>📔 ミハルのひみつにっき</h3>
+    <div id="diaryContent"></div>
+  </div>
+</div>
+
+<!-- 配達アニメーション -->
+<div class="delivery-overlay" id="deliveryOverlay">
+  <div class="delivery-pet" id="deliveryEmoji">🧸</div>
+  <div class="delivery-text" id="deliveryText">モモがメールをとどけにいっています...</div>
+</div>
+
+<!-- ボール投げモードバナー -->
+<div id="playBanner" style="display:none; position:absolute; bottom:80px; left:50%; transform:translateX(-50%);
+  background:rgba(231,76,60,0.9); color:#fff; padding:10px 24px; border-radius:12px; font-size:18px; z-index:15; font-weight:600;">
+  🎾 床をクリックしてボールを投げよう！
+  <button onclick="exitPlayMode()" style="margin-left:12px; background:rgba(255,255,255,0.2); border:none; color:#fff; padding:4px 12px; border-radius:8px; cursor:pointer; font-size:14px;">やめる</button>
+</div>
+
+<!-- なでなでモードバナー -->
+<div id="pettingBanner" style="display:none; position:absolute; bottom:80px; left:50%; transform:translateX(-50%);
+  background:rgba(236,72,153,0.9); color:#fff; padding:10px 24px; border-radius:12px; font-size:18px; z-index:15; font-weight:600;">
+  🤚 ミハルをなでなでしてね！（ペットの上でマウスを動かす）
+  <button onclick="exitPettingMode()" style="margin-left:12px; background:rgba(255,255,255,0.2); border:none; color:#fff; padding:4px 12px; border-radius:8px; cursor:pointer; font-size:14px;">やめる</button>
+</div>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<!-- ペットセットアップ画面 -->
+<div id="setupOverlay" style="display:none; position:fixed; inset:0; background:rgba(26,26,46,0.97);
+  z-index:300; display:none; align-items:center; justify-content:center; flex-direction:column;">
+  <div style="background:#1e1e3a; border-radius:24px; padding:40px; max-width:420px; width:90%;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5); text-align:center;">
+    <div style="font-size:48px; margin-bottom:12px;">🧸</div>
+    <h2 style="color:#fff; font-size:24px; margin-bottom:8px;">あたらしい ともだち</h2>
+    <p style="color:rgba(255,255,255,0.6); font-size:16px; margin-bottom:24px;">なまえと いろを えらんでね</p>
+    <!-- あなたの名前 -->
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">あなたの なまえ</p>
+    <input type="text" id="setupOwnerName" placeholder="たろう"
+      style="width:100%; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15);
+      border-radius:12px; color:#fff; padding:14px 18px; font-size:22px; text-align:center;
+      font-family:inherit; outline:none; margin-bottom:20px;">
+    <!-- あいことば（クラスルーム） -->
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">あいことば（おなじ ことばの ひとと つながるよ）</p>
+    <input type="text" id="setupRoom" placeholder="uxclass2026"
+      style="width:100%; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15);
+      border-radius:12px; color:#fff; padding:14px 18px; font-size:22px; text-align:center;
+      font-family:inherit; outline:none; margin-bottom:20px;">
+    <!-- どうぶつ選択 -->
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">どうぶつ</p>
+    <div id="setupAnimals" style="display:flex; gap:12px; justify-content:center; margin-bottom:20px;">
+      <button class="animal-btn" data-animal="bear" onclick="pickSetupAnimal(this)"
+        style="background:rgba(255,255,255,0.08); border:3px solid #ec4899; border-radius:16px; padding:12px 20px; cursor:pointer; font-size:32px; transition:all 0.2s;">
+        🐻<div style="font-size:14px; color:#fff; margin-top:4px;">クマ</div>
+      </button>
+      <button class="animal-btn" data-animal="cat" onclick="pickSetupAnimal(this)"
+        style="background:rgba(255,255,255,0.08); border:3px solid transparent; border-radius:16px; padding:12px 20px; cursor:pointer; font-size:32px; transition:all 0.2s;">
+        🐱<div style="font-size:14px; color:#fff; margin-top:4px;">ネコ</div>
+      </button>
+      <button class="animal-btn" data-animal="dog" onclick="pickSetupAnimal(this)"
+        style="background:rgba(255,255,255,0.08); border:3px solid transparent; border-radius:16px; padding:12px 20px; cursor:pointer; font-size:32px; transition:all 0.2s;">
+        🐶<div style="font-size:14px; color:#fff; margin-top:4px;">イヌ</div>
+      </button>
+    </div>
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">ペットの なまえ</p>
+    <input type="text" id="setupName" placeholder="なまえ" value="ミハル"
+      style="width:100%; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15);
+      border-radius:12px; color:#fff; padding:14px 18px; font-size:22px; text-align:center;
+      font-family:inherit; outline:none; margin-bottom:20px;">
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">いろ</p>
+    <div id="setupColors" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:16px;">
+      <button class="color-btn" data-color="#ffb347" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ffb347;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#ff8fa3" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ff8fa3;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#a0d2db" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#a0d2db;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#c5a3ff" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#c5a3ff;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#fff9c4" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#fff9c4;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#b8e6c8" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#b8e6c8;" onclick="pickSetupColor(this)"></button>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:24px;">
+      <label style="color:rgba(255,255,255,0.5); font-size:14px;">じぶんで えらぶ</label>
+      <input type="color" id="setupCustomColor" value="#ffb347"
+        style="width:36px; height:36px; border:none; border-radius:8px; cursor:pointer; background:none;"
+        oninput="pickSetupCustomColor(this.value)">
+    </div>
+    <div id="setupPreview" style="margin-bottom:20px; display:flex; justify-content:center;">
+      <canvas id="setupCanvas" width="200" height="200" style="border-radius:16px;"></canvas>
+    </div>
+    <button onclick="confirmSetup()" style="width:100%; background:#ec4899; border:none; border-radius:14px;
+      color:#fff; padding:16px; font-size:22px; font-weight:700; cursor:pointer; transition:all 0.2s;">
+      はじめる！
+    </button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Firebase SDK (compat版 = グローバル firebase オブジェクト) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyCAR16lt1TyffEnAOPamvHsvsJZVvY3fbU",
+    authDomain: "postpetpractice01.firebaseapp.com",
+    projectId: "postpetpractice01",
+    storageBucket: "postpetpractice01.firebasestorage.app",
+    messagingSenderId: "635474956800",
+    appId: "1:635474956800:web:b2f7636f1a2619501ffee5"
+  });
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+</script>
+<script src="room.js"></script>
+<script src="pet.js"></script>
+<script src="mail.js"></script>
+<script>
+// セットアップ画面のロジック
+let setupColor = '#ffb347';
+let setupAnimal = 'bear';
+let setupScene, setupCamera, setupRenderer, setupPetParts = [];
+
+function initSetupPreview() {
+  const canvas = document.getElementById('setupCanvas');
+  setupScene = new THREE.Scene();
+  setupScene.background = new THREE.Color(0x1e1e3a);
+  setupCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
+  setupCamera.position.set(0, 1.0, 2.8);
+  setupCamera.lookAt(0, 0.5, 0);
+  setupRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  setupRenderer.setSize(200, 200);
+  setupRenderer.setPixelRatio(window.devicePixelRatio);
+  // ライト
+  setupScene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+  dl.position.set(2, 3, 2);
+  setupScene.add(dl);
+  // クマを構築
+  buildSetupPet(setupColor, setupAnimal);
+  animateSetup();
+}
+
+function buildSetupPet(hexColor, animal) {
+  // 既存パーツを削除
+  setupPetParts.forEach(m => setupScene.remove(m));
+  setupPetParts = [];
+  animal = animal || 'bear';
+  const c = parseInt(hexColor.replace('#',''), 16);
+  const r = (c>>16)&0xff, g = (c>>8)&0xff, b = c&0xff;
+  const dark = ((Math.max(0,r-30))<<16)|((Math.max(0,g-30))<<8)|Math.max(0,b-30);
+  const main = new THREE.MeshLambertMaterial({color:c});
+  const darkM = new THREE.MeshLambertMaterial({color:dark});
+  const white = new THREE.MeshLambertMaterial({color:0xffffff});
+  const blk = new THREE.MeshLambertMaterial({color:0x333333});
+  const noseMat = new THREE.MeshLambertMaterial({color:0xe91e63});
+  function add(mesh){ setupScene.add(mesh); setupPetParts.push(mesh); return mesh; }
+
+  if (animal === 'cat') {
+    // ネコ: 細身の体＋三角耳＋しっぽ
+    const body = add(new THREE.Mesh(new THREE.SphereGeometry(0.18,12,10), main));
+    body.position.y=0.32; body.scale.set(0.85,0.95,0.8);
+    const belly = add(new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8), white));
+    belly.position.set(0,0.30,0.08); belly.scale.set(0.7,0.7,0.5);
+    const head = add(new THREE.Mesh(new THREE.SphereGeometry(0.26,12,10), main));
+    head.position.y=0.68;
+    const muzzle = add(new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8), white));
+    muzzle.position.set(0,0.61,0.18); muzzle.scale.set(0.9,0.6,0.7);
+    // 三角耳（ConeGeometry）
+    const earL = add(new THREE.Mesh(new THREE.ConeGeometry(0.08,0.16,4), main));
+    earL.position.set(-0.16,0.92,0); earL.rotation.z=0.2;
+    const earR = add(new THREE.Mesh(new THREE.ConeGeometry(0.08,0.16,4), main));
+    earR.position.set(0.16,0.92,0); earR.rotation.z=-0.2;
+    const earInL = add(new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4), darkM));
+    earInL.position.set(-0.16,0.92,0.03); earInL.rotation.z=0.2;
+    const earInR = add(new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4), darkM));
+    earInR.position.set(0.16,0.92,0.03); earInR.rotation.z=-0.2;
+    // 目（大きめ）
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.075,8,8), new THREE.MeshLambertMaterial({color:0xffffff}))).position.set(-0.09,0.72,0.22);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.075,8,8), new THREE.MeshLambertMaterial({color:0xffffff}))).position.set(0.09,0.72,0.22);
+    const eL = add(new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8), blk));
+    eL.position.set(-0.09,0.72,0.24); eL.scale.set(0.6,1.2,0.3);
+    const eR = add(new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8), blk));
+    eR.position.set(0.09,0.72,0.24); eR.scale.set(0.6,1.2,0.3);
+    // 鼻（小さめ三角）
+    const n = add(new THREE.Mesh(new THREE.SphereGeometry(0.025,6,6), noseMat));
+    n.position.set(0,0.64,0.3); n.scale.set(1.3,0.7,1);
+    // しっぽ
+    const tail = add(new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.02,0.4,8), main));
+    tail.position.set(0,0.35,-0.22); tail.rotation.x=-0.8; tail.rotation.z=0.3;
+    // 手足（細め）
+    const alG = new THREE.Group(); alG.position.set(-0.16,0.32,0.04);
+    alG.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8), main), {}));
+    alG.children[0].scale.set(0.8,2.0,0.8); alG.children[0].position.y=-0.08;
+    alG.rotation.z=-0.25; add(alG);
+    const arG = new THREE.Group(); arG.position.set(0.16,0.32,0.04);
+    arG.add(new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8), main));
+    arG.children[0].scale.set(0.8,2.0,0.8); arG.children[0].position.y=-0.08;
+    arG.rotation.z=0.25; add(arG);
+    const llG = new THREE.Group(); llG.position.set(-0.08,0.13,0.04);
+    llG.add(new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8), main));
+    llG.children[0].scale.set(0.9,1.6,0.9); llG.children[0].position.y=-0.05; add(llG);
+    const lrG = new THREE.Group(); lrG.position.set(0.08,0.13,0.04);
+    lrG.add(new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8), main));
+    lrG.children[0].scale.set(0.9,1.6,0.9); lrG.children[0].position.y=-0.05; add(lrG);
+
+  } else if (animal === 'dog') {
+    // イヌ: やや大きめ頭＋垂れ耳＋しっぽ
+    const body = add(new THREE.Mesh(new THREE.SphereGeometry(0.24,12,10), main));
+    body.position.y=0.36; body.scale.set(1,0.85,0.95);
+    const belly = add(new THREE.Mesh(new THREE.SphereGeometry(0.17,10,8), white));
+    belly.position.set(0,0.34,0.1); belly.scale.set(0.8,0.75,0.5);
+    const head = add(new THREE.Mesh(new THREE.SphereGeometry(0.34,12,10), main));
+    head.position.y=0.78;
+    // マズル（長め）
+    const muzzle = add(new THREE.Mesh(new THREE.SphereGeometry(0.18,10,8), white));
+    muzzle.position.set(0,0.68,0.24); muzzle.scale.set(0.9,0.65,0.9);
+    // 垂れ耳
+    const earL = add(new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), darkM));
+    earL.position.set(-0.26,0.88,-0.05); earL.scale.set(0.7,1.5,0.6);
+    const earR = add(new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), darkM));
+    earR.position.set(0.26,0.88,-0.05); earR.scale.set(0.7,1.5,0.6);
+    // 目
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), new THREE.MeshLambertMaterial({color:0xffffff}))).position.set(-0.11,0.82,0.28);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), new THREE.MeshLambertMaterial({color:0xffffff}))).position.set(0.11,0.82,0.28);
+    const eL = add(new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8), blk));
+    eL.position.set(-0.11,0.82,0.30); eL.scale.set(0.7,1.0,0.3);
+    const eR = add(new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8), blk));
+    eR.position.set(0.11,0.82,0.30); eR.scale.set(0.7,1.0,0.3);
+    // 鼻（大きめ丸）
+    const n = add(new THREE.Mesh(new THREE.SphereGeometry(0.045,8,6), blk));
+    n.position.set(0,0.72,0.38); n.scale.set(1.2,0.9,1);
+    // 舌（ちょっと出てる）
+    const tongue = add(new THREE.Mesh(new THREE.SphereGeometry(0.04,8,6), noseMat));
+    tongue.position.set(0,0.63,0.35); tongue.scale.set(0.8,0.5,0.6);
+    // しっぽ（太め、上向き）
+    const tail = add(new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.03,0.3,8), main));
+    tail.position.set(0,0.42,-0.25); tail.rotation.x=-1.2;
+    // 手足（太め）
+    const alG = new THREE.Group(); alG.position.set(-0.2,0.38,0.05);
+    alG.add(new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), main));
+    alG.children[0].scale.set(1,1.8,1); alG.children[0].position.y=-0.09;
+    const alT = new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8), white);
+    alT.position.y=-0.22; alG.add(alT);
+    alG.rotation.z=-0.3; add(alG);
+    const arG = new THREE.Group(); arG.position.set(0.2,0.38,0.05);
+    arG.add(new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), main));
+    arG.children[0].scale.set(1,1.8,1); arG.children[0].position.y=-0.09;
+    const arT = new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8), white);
+    arT.position.y=-0.22; arG.add(arT);
+    arG.rotation.z=0.3; add(arG);
+    const llG = new THREE.Group(); llG.position.set(-0.1,0.15,0.05);
+    llG.add(new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8), main));
+    llG.children[0].scale.set(1,1.5,1); llG.children[0].position.y=-0.06;
+    const llT = new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), white);
+    llT.position.y=-0.17; llT.scale.set(1.4,0.7,1.2); llG.add(llT); add(llG);
+    const lrG = new THREE.Group(); lrG.position.set(0.1,0.15,0.05);
+    lrG.add(new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8), main));
+    lrG.children[0].scale.set(1,1.5,1); lrG.children[0].position.y=-0.06;
+    const lrT = new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), white);
+    lrT.position.y=-0.17; lrT.scale.set(1.4,0.7,1.2); lrG.add(lrT); add(lrG);
+
+  } else {
+    // クマ（デフォルト）: 既存のまま
+    const body = add(new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10), main));
+    body.position.y=0.35; body.scale.set(1,0.85,0.9);
+    const belly = add(new THREE.Mesh(new THREE.SphereGeometry(0.16,10,8), white));
+    belly.position.set(0,0.33,0.1); belly.scale.set(0.8,0.75,0.5);
+    const head = add(new THREE.Mesh(new THREE.SphereGeometry(0.32,12,10), main));
+    head.position.y=0.75;
+    const muzzle = add(new THREE.Mesh(new THREE.SphereGeometry(0.16,10,8), white));
+    muzzle.position.set(0,0.67,0.22); muzzle.scale.set(1,0.7,0.8);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), main)).position.set(-0.22,1.0,0);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), main)).position.set(0.22,1.0,0);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), darkM)).position.set(-0.22,1.0,0.05);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), darkM)).position.set(0.22,1.0,0.05);
+    const eyeWhite = new THREE.MeshLambertMaterial({color:0xffffff});
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.085,8,8), eyeWhite)).position.set(-0.1,0.78,0.27);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.085,8,8), eyeWhite)).position.set(0.1,0.78,0.27);
+    const eyeL = add(new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8), blk));
+    eyeL.position.set(-0.1,0.78,0.28); eyeL.scale.set(0.7,1.1,0.3);
+    const eyeR = add(new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8), blk));
+    eyeR.position.set(0.1,0.78,0.28); eyeR.scale.set(0.7,1.1,0.3);
+    const n = add(new THREE.Mesh(new THREE.SphereGeometry(0.04,8,6), noseMat));
+    n.position.set(0,0.7,0.36); n.scale.set(1.2,0.8,1);
+    const alG = new THREE.Group(); alG.position.set(-0.22,0.4,0.05);
+    const alM = new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), main);
+    alM.scale.set(0.9,1.8,0.9); alM.position.y=-0.09; alG.add(alM);
+    const alT = new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8), white);
+    alT.position.y=-0.22; alG.add(alT);
+    alG.rotation.z=-0.35; add(alG);
+    const arG = new THREE.Group(); arG.position.set(0.22,0.4,0.05);
+    const arM = new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), main);
+    arM.scale.set(0.9,1.8,0.9); arM.position.y=-0.09; arG.add(arM);
+    const arT = new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8), white);
+    arT.position.y=-0.22; arG.add(arT);
+    arG.rotation.z=-0.3; add(arG);
+    const llG = new THREE.Group(); llG.position.set(-0.1,0.15,0.05);
+    const llM = new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8), main);
+    llM.scale.set(1,1.5,1); llM.position.y=-0.06; llG.add(llM);
+    const llT = new THREE.Mesh(new THREE.SphereGeometry(0.075,8,8), white);
+    llT.position.y=-0.17; llT.scale.set(1.4,0.7,1.2); llG.add(llT); add(llG);
+    const lrG = new THREE.Group(); lrG.position.set(0.1,0.15,0.05);
+    const lrM = new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8), main);
+    lrM.scale.set(1,1.5,1); lrM.position.y=-0.06; lrG.add(lrM);
+    const lrT = new THREE.Mesh(new THREE.SphereGeometry(0.075,8,8), white);
+    lrT.position.y=-0.17; lrT.scale.set(1.4,0.7,1.2); lrG.add(lrT); add(lrG);
+  }
+}
+
+let setupBob = 0;
+function animateSetup() {
+  requestAnimationFrame(animateSetup);
+  if (!setupRenderer) return;
+  // ゆっくり揺れる
+  setupBob += 0.03;
+  setupPetParts.forEach(p => { p.position.y += Math.sin(setupBob) * 0.001; });
+  setupRenderer.render(setupScene, setupCamera);
+}
+
+function updateSetupPreview() {
+  if (setupScene) buildSetupPet(setupColor, setupAnimal);
+}
+
+function pickSetupColor(btn) {
+  setupColor = btn.dataset.color;
+  document.getElementById('setupCustomColor').value = setupColor;
+  document.querySelectorAll('.color-btn').forEach(b => b.style.borderColor = 'transparent');
+  btn.style.borderColor = '#fff';
+  updateSetupPreview();
+}
+function pickSetupCustomColor(hex) {
+  setupColor = hex;
+  document.querySelectorAll('.color-btn').forEach(b => b.style.borderColor = 'transparent');
+  updateSetupPreview();
+}
+function pickSetupAnimal(btn) {
+  setupAnimal = btn.dataset.animal;
+  document.querySelectorAll('.animal-btn').forEach(b => b.style.borderColor = 'transparent');
+  btn.style.borderColor = '#ec4899';
+  updateSetupPreview();
+}
+function confirmSetup() {
+  const name = document.getElementById('setupName').value.trim() || 'ミハル';
+  const ownerName = document.getElementById('setupOwnerName').value.trim() || '';
+  const room = document.getElementById('setupRoom').value.trim() || '';
+  localStorage.setItem('postpet_setup', JSON.stringify({
+    name: name, color: setupColor, animal: setupAnimal,
+    ownerName: ownerName, room: room
+  }));
+  localStorage.removeItem('postpet_state');
+  // プレビューレンダラーを破棄
+  if (setupRenderer) { setupRenderer.dispose(); setupRenderer = null; }
+  document.getElementById('setupOverlay').style.display = 'none';
+  PET.name = name;
+  initRoom();
+  initPet();
+  initMail();
+  // ペットがドアから入ってくる演出
+  setTimeout(() => {
+    if (typeof deliveryReturn === 'function') {
+      deliveryReturn();
+    }
+  }, 500);
+}
+function showSetup() {
+  const overlay = document.getElementById('setupOverlay');
+  overlay.style.display = 'flex';
+  // デフォルト色を選択状態に
+  const firstBtn = document.querySelector('.color-btn[data-color="#ffb347"]');
+  if (firstBtn) firstBtn.style.borderColor = '#fff';
+  // 3Dプレビュー初期化
+  setTimeout(() => initSetupPreview(), 50);
+}
+function resetPet() {
+  localStorage.removeItem('postpet_setup');
+  localStorage.removeItem('postpet_state');
+  localStorage.removeItem('postpet_sent');
+  // ウェルカムメールフラグもクリア（新しいペットで再送される）
+  if (myUserId) {
+    localStorage.removeItem('postpet_welcomed_' + myUserId);
+    // Firestoreの受信メールも全削除
+    db.collection('users').doc(myUserId).collection('inbox').get().then(snapshot => {
+      const batch = db.batch();
+      snapshot.forEach(doc => batch.delete(doc.ref));
+      return batch.commit();
+    }).then(() => {
+      location.reload();
+    }).catch(() => {
+      location.reload();
+    });
+  } else {
+    location.reload();
+  }
+}
+
+// 初期化
+window.addEventListener('load', () => {
+  const setup = localStorage.getItem('postpet_setup');
+  if (!setup) {
+    showSetup();
+  } else {
+    initRoom();
+    initPet();
+    initMail();
+  }
+});
+</script>
+</body>
+</html>
