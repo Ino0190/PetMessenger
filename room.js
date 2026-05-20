@@ -20,7 +20,7 @@ function initRoom() {
   scene.background = new THREE.Color(0xd4e6f1);
 
   // カメラ（斜め上45度から見下ろし）
-  const isMobile = roomW < 768;
+  const isMobile = window.innerWidth < 768;
   camera = new THREE.PerspectiveCamera(isMobile ? 58 : 44, roomW / roomH, 0.1, 100);
   camera.position.set(isMobile ? 4.2 : 4.9, isMobile ? 5.0 : 4.2, isMobile ? 4.2 : 4.9);
   camera.lookAt(0, 0.5, 0);
@@ -878,7 +878,7 @@ function onResize() {
   roomH = container.clientHeight;
   camera.aspect = roomW / roomH;
   // スマホ（縦長）ではカメラを引いて部屋全体を映す
-  if (roomW < 768) {
+  if (window.innerWidth < 768) {
     camera.fov = 58;
     camera.position.set(4.2, 5.0, 4.2);
   } else {
