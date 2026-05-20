@@ -21,9 +21,9 @@ function initRoom() {
 
   // カメラ（斜め上45度から見下ろし）
   const isMobile = window.innerWidth < 768;
-  camera = new THREE.PerspectiveCamera(isMobile ? 58 : 44, roomW / roomH, 0.1, 100);
-  camera.position.set(isMobile ? 4.2 : 4.9, isMobile ? 5.0 : 4.2, isMobile ? 4.2 : 4.9);
-  camera.lookAt(0, 0.5, 0);
+  camera = new THREE.PerspectiveCamera(isMobile ? 64 : 44, roomW / roomH, 0.1, 100);
+  camera.position.set(isMobile ? 3.8 : 4.9, isMobile ? 5.5 : 4.2, isMobile ? 3.8 : 4.9);
+  camera.lookAt(0, 0.3, 0);
 
   // レンダラー
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -879,13 +879,13 @@ function onResize() {
   camera.aspect = roomW / roomH;
   // スマホ（縦長）ではカメラを引いて部屋全体を映す
   if (window.innerWidth < 768) {
-    camera.fov = 58;
-    camera.position.set(4.2, 5.0, 4.2);
+    camera.fov = 64;
+    camera.position.set(3.8, 5.5, 3.8);
   } else {
     camera.fov = 44;
     camera.position.set(4.9, 4.2, 4.9);
   }
-  camera.lookAt(0, 0.5, 0);
+  camera.lookAt(0, 0.3, 0);
   camera.updateProjectionMatrix();
   renderer.setSize(roomW, roomH);
 }
