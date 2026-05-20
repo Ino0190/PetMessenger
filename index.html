@@ -171,7 +171,8 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
     width: 100%; z-index: 40; overflow-y: auto; }
   .mail-panel.mobile-show { display: flex; }
   .mobile-nav { display: block; }
-  .actions { bottom: 16px; gap: 4px; }
+  .actions { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%);
+    gap: 4px; z-index: 15; }
   .actions button { padding: 6px 10px; min-width: 54px; }
   .actions button .emoji { font-size: 20px; }
   .actions button .label { font-size: 12px; }

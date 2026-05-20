@@ -20,8 +20,9 @@ function initRoom() {
   scene.background = new THREE.Color(0xd4e6f1);
 
   // カメラ（斜め上45度から見下ろし）
-  camera = new THREE.PerspectiveCamera(44, roomW / roomH, 0.1, 100);
-  camera.position.set(4.9, 4.2, 4.9);
+  const isMobile = roomW < 768;
+  camera = new THREE.PerspectiveCamera(isMobile ? 58 : 44, roomW / roomH, 0.1, 100);
+  camera.position.set(isMobile ? 4.2 : 4.9, isMobile ? 5.0 : 4.2, isMobile ? 4.2 : 4.9);
   camera.lookAt(0, 0.5, 0);
 
   // レンダラー
@@ -822,10 +823,10 @@ function animate() {
   if (windowGlass) {
     const h = new Date().getHours();
     let skyColor, skyOpacity;
-    if (h >= 6 && h < 8) { skyColor = 0xffb347; skyOpacity = 0.6; }
-    else if (h >= 8 && h < 12) { skyColor = 0x5cb8e6; skyOpacity = 0.5; }
-    else if (h >= 12 && h < 16) { skyColor = 0x4aa3d4; skyOpacity = 0.5; }
-    else if (h >= 16 && h < 18) { skyColor = 0xff7043; skyOpacity = 0.6; }
+    if (h >= 6 && h < 8) { skyColor = 0xffcc80; skyOpacity = 0.5; }
+    else if (h >= 8 && h < 12) { skyColor = 0x87ceeb; skyOpacity = 0.4; }
+    else if (h >= 12 && h < 16) { skyColor = 0x5cb8e6; skyOpacity = 0.4; }
+    else if (h >= 16 && h < 18) { skyColor = 0xf4a460; skyOpacity = 0.5; }
     else if (h >= 18 && h < 20) { skyColor = 0x4a5080; skyOpacity = 0.7; }
     else { skyColor = 0x1a1a3e; skyOpacity = 0.8; }
     windowGlass.material.color.setHex(0xffffff);
@@ -876,6 +877,15 @@ function onResize() {
   roomW = container.clientWidth;
   roomH = container.clientHeight;
   camera.aspect = roomW / roomH;
+  // スマホ（縦長）ではカメラを引いて部屋全体を映す
+  if (roomW < 768) {
+    camera.fov = 58;
+    camera.position.set(4.2, 5.0, 4.2);
+  } else {
+    camera.fov = 44;
+    camera.position.set(4.9, 4.2, 4.9);
+  }
+  camera.lookAt(0, 0.5, 0);
   camera.updateProjectionMatrix();
   renderer.setSize(roomW, roomH);
 }
