@@ -167,12 +167,19 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
   .app { flex-direction: column; }
   .room-area { display: block; height: 100vh; }
   .mail-panel { display: none; position: fixed; inset: 0; width: 100%; height: 100%;
-    z-index: 40; overflow-y: auto; }
+    z-index: 40; overflow-y: auto; padding-bottom: 60px; }
   .mail-panel.mobile-show { display: flex; }
   .mobile-nav { display: block; }
-  .actions { bottom: 72px; }
-  .pet-bar .stat-bars { display: none; }
-  .pet-bar { padding: 6px 12px; }
+  .actions { bottom: 80px; gap: 6px; }
+  .actions button { padding: 8px 14px; min-width: 60px; }
+  .actions button .emoji { font-size: 22px; }
+  .actions button .label { font-size: 13px; }
+  .pet-bar { padding: 6px 10px; gap: 8px; }
+  .pet-bar .pet-name { font-size: 18px; }
+  .pet-bar .pet-mood { font-size: 16px; }
+  .stat-bars { gap: 6px; }
+  .stat-bar label { font-size: 14px; }
+  .stat-bar .bar { width: 50px; height: 8px; }
 }
 </style>
 </head>
