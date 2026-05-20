@@ -544,6 +544,7 @@ function enterPettingMode() {
   // マウス移動でなでなで検知
   const canvas = document.getElementById('roomCanvas');
   canvas.addEventListener('mousemove', onPettingMove);
+  canvas.addEventListener('touchmove', onPettingTouch, { passive: false });
   canvas.addEventListener('click', onPettingClick);
 }
 
@@ -553,6 +554,7 @@ function exitPettingMode() {
   document.getElementById('pettingBanner').style.display = 'none';
   const canvas = document.getElementById('roomCanvas');
   canvas.removeEventListener('mousemove', onPettingMove);
+  canvas.removeEventListener('touchmove', onPettingTouch);
   canvas.removeEventListener('click', onPettingClick);
   if (petStrokes > 0) {
     const bonus = Math.min(20, petStrokes * 2);
@@ -627,6 +629,16 @@ function onPettingMove(e) {
     } else {
       lastPetPos = currentPos;
     }
+  }
+}
+
+// タッチ版なでなで（スマホ対応）
+function onPettingTouch(e) {
+  if (!pettingMode) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  if (touch) {
+    onPettingMove({ clientX: touch.clientX, clientY: touch.clientY });
   }
 }
 
