@@ -143,6 +143,37 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
   transition: all 0.3s;
 }
 .toast.show { opacity: 1; transform: translateY(0); }
+
+/* スマホ用ナビバー */
+.mobile-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(22,33,62,0.98); backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  z-index: 50; padding: 8px 0 env(safe-area-inset-bottom, 8px);
+}
+.mobile-nav-inner {
+  display: flex; justify-content: center; gap: 32px;
+}
+.mobile-nav button {
+  background: none; border: none; color: rgba(255,255,255,0.5);
+  font-size: 14px; cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; padding: 4px 12px;
+}
+.mobile-nav button.active { color: #ec4899; }
+.mobile-nav button .nav-icon { font-size: 24px; }
+
+/* スマホレスポンシブ */
+@media (max-width: 768px) {
+  .app { flex-direction: column; }
+  .room-area { display: block; height: 100vh; }
+  .mail-panel { display: none; position: fixed; inset: 0; width: 100%; height: 100%;
+    z-index: 40; overflow-y: auto; }
+  .mail-panel.mobile-show { display: flex; }
+  .mobile-nav { display: block; }
+  .actions { bottom: 72px; }
+  .pet-bar .stat-bars { display: none; }
+  .pet-bar { padding: 6px 12px; }
+}
 </style>
 </head>
 <body>
@@ -236,6 +267,14 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
   <button onclick="exitPettingMode()" style="margin-left:12px; background:rgba(255,255,255,0.2); border:none; color:#fff; padding:4px 12px; border-radius:8px; cursor:pointer; font-size:14px;">やめる</button>
 </div>
 
+<!-- モバイルナビバー -->
+<div class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav-inner">
+    <button class="active" onclick="mobileShowRoom(this)"><span class="nav-icon">🏠</span>おへや</button>
+    <button onclick="mobileShowMail(this)"><span class="nav-icon">📮</span>メール</button>
+  </div>
+</div>
+
 <!-- トースト -->
 <div class="toast" id="toast"></div>
 
@@ -326,6 +365,18 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
 <script src="pet.js"></script>
 <script src="mail.js"></script>
 <script>
+// モバイルナビ切替
+function mobileShowRoom(btn) {
+  document.querySelector('.mail-panel').classList.remove('mobile-show');
+  document.querySelectorAll('.mobile-nav button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+function mobileShowMail(btn) {
+  document.querySelector('.mail-panel').classList.add('mobile-show');
+  document.querySelectorAll('.mobile-nav button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
 // セットアップ画面のロジック
 let setupColor = '#ffb347';
 let setupAnimal = 'bear';
@@ -566,12 +617,15 @@ function confirmSetup() {
   initRoom();
   initPet();
   initMail();
-  // ペットがドアから入ってくる演出
+  // ペットを非表示にしてからドアから入ってくる演出
+  if (typeof petGroup !== 'undefined' && petGroup) {
+    petGroup.visible = false;
+  }
   setTimeout(() => {
     if (typeof deliveryReturn === 'function') {
       deliveryReturn();
     }
-  }, 500);
+  }, 800);
 }
 function showSetup() {
   const overlay = document.getElementById('setupOverlay');
