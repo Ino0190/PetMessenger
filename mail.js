@@ -145,6 +145,19 @@ async function sendMail() {
   if (!recipientId) { showToast('あて先を えらんでね'); return; }
   if (!body) { showToast('メッセージを かいてね'); return; }
 
+  if (recipientId === myUserId) {
+    showToast('じぶんには おくれないよ');
+    return;
+  }
+
+  // 「みんなに送る」の場合
+  if (recipientId === '__all__') {
+    await sendMailToAll(body);
+    toEl.selectedIndex = 0;
+    bodyEl.value = '';
+    return;
+  }
+
   // 相手の情報を取得
   let recipientName = recipientId;
   try {
@@ -153,11 +166,6 @@ async function sendMail() {
       recipientName = recipientDoc.data().petName || recipientId;
     }
   } catch (e) { /* ignore */ }
-
-  if (recipientId === myUserId) {
-    showToast('じぶんには おくれないよ');
-    return;
-  }
 
   const mailData = {
     from: myUserId,
@@ -315,6 +323,12 @@ function loadUserList() {
     const currentVal = select.value;
     // オプションをリセット（最初のplaceholderは残す）
     select.innerHTML = '<option value="" disabled selected>あて先を えらんでね</option>';
+    // 「みんなに送る」オプション
+    const allOpt = document.createElement('option');
+    allOpt.value = '__all__';
+    allOpt.textContent = '📢 みんなに おくる';
+    allOpt.style.fontSize = '18px';
+    select.appendChild(allOpt);
     snapshot.forEach((doc) => {
       if (doc.id === myUserId) return; // 自分は除外
       const data = doc.data();
@@ -354,6 +368,67 @@ function updateRoomInfo(memberCount) {
   } else {
     infoEl.innerHTML = '⚠️ あいことばが ないので、みんなが みえるよ';
   }
+}
+
+// みんなに送る
+async function sendMailToAll(body) {
+  // 同じクラスルームのユーザーを取得
+  let query = db.collection('users');
+  if (myRoom) {
+    query = query.where('room', '==', myRoom);
+  }
+
+  const snapshot = await query.get();
+  const recipients = [];
+  snapshot.forEach((doc) => {
+    if (doc.id !== myUserId) recipients.push(doc.id);
+  });
+
+  if (recipients.length === 0) {
+    showToast('おくる あいてが いないよ');
+    return;
+  }
+
+  const mailData = {
+    from: myUserId,
+    fromPetName: myPetName,
+    fromPetColor: myPetColor,
+    fromPetAnimal: myPetAnimal,
+    fromOwnerName: myOwnerName,
+    toPetName: 'みんな',
+    subject: body.substring(0, 20) + (body.length > 20 ? '...' : ''),
+    body: body,
+    date: new Date().toISOString(),
+    read: false,
+    fromPet: false,
+  };
+
+  // 配達アニメーション
+  startDelivery('みんな', async () => {
+    try {
+      // 全員のinboxに書き込み
+      const batch = db.batch();
+      recipients.forEach((uid) => {
+        const ref = db.collection('users').doc(uid).collection('inbox').doc();
+        batch.set(ref, { ...mailData, to: uid });
+      });
+      await batch.commit();
+
+      // ローカルの送信済みに追加
+      MAIL_STORE.sent.push({
+        ...mailData,
+        to: '__all__',
+        id: 'sent_' + Date.now(),
+      });
+      localStorage.setItem('postpet_sent', JSON.stringify(MAIL_STORE.sent));
+
+      renderMailList();
+      showToast('📮 ' + myPetName + 'が みんなに とどけたよ！（' + recipients.length + '人）');
+    } catch (err) {
+      console.error('一斉送信エラー:', err);
+      showToast('⚠️ おくれなかった...');
+    }
+  });
 }
 
 // ペットが勝手にメールを送る（ポストペットの特徴的機能）
