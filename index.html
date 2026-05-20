@@ -241,27 +241,27 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
 
 <!-- ペットセットアップ画面 -->
 <div id="setupOverlay" style="display:none; position:fixed; inset:0; background:rgba(26,26,46,0.97);
-  z-index:300; display:none; align-items:center; justify-content:center; flex-direction:column;">
-  <div style="background:#1e1e3a; border-radius:24px; padding:40px; max-width:420px; width:90%;
-    box-shadow:0 20px 60px rgba(0,0,0,0.5); text-align:center;">
-    <div style="font-size:48px; margin-bottom:12px;">🧸</div>
-    <h2 style="color:#fff; font-size:24px; margin-bottom:8px;">あたらしい ともだち</h2>
-    <p style="color:rgba(255,255,255,0.6); font-size:16px; margin-bottom:24px;">なまえと いろを えらんでね</p>
+  z-index:300; display:none; align-items:center; justify-content:center; flex-direction:column; overflow-y:auto; padding:20px 0;">
+  <div style="background:#1e1e3a; border-radius:24px; padding:32px 24px; max-width:420px; width:90%;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5); text-align:center; margin:auto;">
+    <div style="font-size:36px; margin-bottom:8px;">🧸</div>
+    <h2 style="color:#fff; font-size:22px; margin-bottom:4px;">あたらしい ともだち</h2>
+    <p style="color:rgba(255,255,255,0.6); font-size:15px; margin-bottom:16px;">なまえと いろを えらんでね</p>
     <!-- あなたの名前 -->
-    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">あなたの なまえ</p>
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:6px;">あなたの なまえ</p>
     <input type="text" id="setupOwnerName" placeholder="たろう"
       style="width:100%; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15);
-      border-radius:12px; color:#fff; padding:14px 18px; font-size:22px; text-align:center;
-      font-family:inherit; outline:none; margin-bottom:20px;">
+      border-radius:12px; color:#fff; padding:12px 16px; font-size:20px; text-align:center;
+      font-family:inherit; outline:none; margin-bottom:14px;">
     <!-- あいことば（クラスルーム） -->
-    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">あいことば（おなじ ことばの ひとと つながるよ）</p>
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:6px;">あいことば（おなじ ことばの ひとと つながるよ）</p>
     <input type="text" id="setupRoom" placeholder="uxclass2026"
       style="width:100%; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15);
-      border-radius:12px; color:#fff; padding:14px 18px; font-size:22px; text-align:center;
-      font-family:inherit; outline:none; margin-bottom:20px;">
+      border-radius:12px; color:#fff; padding:12px 16px; font-size:20px; text-align:center;
+      font-family:inherit; outline:none; margin-bottom:14px;">
     <!-- どうぶつ選択 -->
-    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">どうぶつ</p>
-    <div id="setupAnimals" style="display:flex; gap:12px; justify-content:center; margin-bottom:20px;">
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:6px;">どうぶつ</p>
+    <div id="setupAnimals" style="display:flex; gap:10px; justify-content:center; margin-bottom:14px;">
       <button class="animal-btn" data-animal="bear" onclick="pickSetupAnimal(this)"
         style="background:rgba(255,255,255,0.08); border:3px solid #ec4899; border-radius:16px; padding:12px 20px; cursor:pointer; font-size:32px; transition:all 0.2s;">
         🐻<div style="font-size:14px; color:#fff; margin-top:4px;">クマ</div>
@@ -275,28 +275,28 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
         🐶<div style="font-size:14px; color:#fff; margin-top:4px;">イヌ</div>
       </button>
     </div>
-    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">ペットの なまえ</p>
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:6px;">ペットの なまえ</p>
     <input type="text" id="setupName" placeholder="なまえ" value="ミハル"
       style="width:100%; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15);
-      border-radius:12px; color:#fff; padding:14px 18px; font-size:22px; text-align:center;
-      font-family:inherit; outline:none; margin-bottom:20px;">
-    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:10px;">いろ</p>
-    <div id="setupColors" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:16px;">
-      <button class="color-btn" data-color="#ffb347" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ffb347;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#ff8fa3" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ff8fa3;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#a0d2db" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#a0d2db;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#c5a3ff" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#c5a3ff;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#fff9c4" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#fff9c4;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#b8e6c8" style="width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#b8e6c8;" onclick="pickSetupColor(this)"></button>
+      border-radius:12px; color:#fff; padding:12px 16px; font-size:20px; text-align:center;
+      font-family:inherit; outline:none; margin-bottom:14px;">
+    <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:6px;">いろ</p>
+    <div id="setupColors" style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;">
+      <button class="color-btn" data-color="#ffb347" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ffb347;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#ff8fa3" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ff8fa3;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#a0d2db" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#a0d2db;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#c5a3ff" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#c5a3ff;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#fff9c4" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#fff9c4;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#b8e6c8" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#b8e6c8;" onclick="pickSetupColor(this)"></button>
     </div>
-    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:24px;">
+    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
       <label style="color:rgba(255,255,255,0.5); font-size:14px;">じぶんで えらぶ</label>
       <input type="color" id="setupCustomColor" value="#ffb347"
         style="width:36px; height:36px; border:none; border-radius:8px; cursor:pointer; background:none;"
         oninput="pickSetupCustomColor(this.value)">
     </div>
-    <div id="setupPreview" style="margin-bottom:20px; display:flex; justify-content:center;">
-      <canvas id="setupCanvas" width="200" height="200" style="border-radius:16px;"></canvas>
+    <div id="setupPreview" style="margin-bottom:16px; display:flex; justify-content:center;">
+      <canvas id="setupCanvas" width="160" height="160" style="border-radius:16px;"></canvas>
     </div>
     <button onclick="confirmSetup()" style="width:100%; background:#ec4899; border:none; border-radius:14px;
       color:#fff; padding:16px; font-size:22px; font-weight:700; cursor:pointer; transition:all 0.2s;">
@@ -339,7 +339,7 @@ function initSetupPreview() {
   setupCamera.position.set(0, 1.0, 2.8);
   setupCamera.lookAt(0, 0.5, 0);
   setupRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-  setupRenderer.setSize(200, 200);
+  setupRenderer.setSize(160, 160);
   setupRenderer.setPixelRatio(window.devicePixelRatio);
   // ライト
   setupScene.add(new THREE.AmbientLight(0xffffff, 0.6));
