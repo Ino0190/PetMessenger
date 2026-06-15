@@ -1,6 +1,22 @@
 // mail.js — Firebase Firestoreベースのリアルメッセージングシステム
 // ペットが配達する演出付き。実際に他のユーザーとメッセージを送り合える。
 
+// HTMLエスケープ（保存型XSS対策）。他ユーザー由来の文字列をinnerHTMLに入れる前に必ず通す
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// 色文字列のサニタイズ（style属性内に入れるためhex/rgbのみ許可、それ以外は無色）
+function safeColor(value) {
+  const v = String(value == null ? '' : value).trim();
+  return /^#[0-9a-fA-F]{3,8}$/.test(v) || /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/.test(v) ? v : '';
+}
+
 let currentTab = 'inbox';
 let myUserId = null;
 let myPetName = null;
@@ -140,7 +156,7 @@ async function sendMail() {
   const toEl = document.getElementById('mailTo');
   const bodyEl = document.getElementById('mailBody');
   const recipientId = toEl.value;
-  const body = bodyEl.value.trim();
+  const body = bodyEl.value.trim().slice(0, 500);
 
   if (!recipientId) { showToast('あて先を えらんでね'); return; }
   if (!body) { showToast('メッセージを かいてね'); return; }
@@ -221,9 +237,9 @@ function renderMailList() {
       ? '<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.3)">まだ にっきは ないよ</div>'
       : PET.diary.map(d => `
         <div class="mail-item">
-          <div class="from">📔 ${PET.name}のにっき</div>
-          <div class="subject">${d.text}</div>
-          <div class="time">${d.date}</div>
+          <div class="from">📔 ${esc(PET.name)}のにっき</div>
+          <div class="subject">${esc(d.text)}</div>
+          <div class="time">${esc(d.date)}</div>
         </div>
       `).join('');
     return;
@@ -246,9 +262,9 @@ function renderMailList() {
 
     return `
       <div class="mail-item ${!m.read ? 'unread' : ''}" onclick="openMail('${currentTab}',${i})">
-        <div class="from">${label}</div>
-        <div class="subject">${m.subject}</div>
-        <div class="time">${dateStr}</div>
+        <div class="from">${esc(label)}</div>
+        <div class="subject">${esc(m.subject)}</div>
+        <div class="time">${esc(dateStr)}</div>
       </div>
     `;
   }).join('');
@@ -273,11 +289,12 @@ async function openMail(tab, index) {
   const dateStr = mail.date ? new Date(mail.date).toLocaleString('ja-JP') : '';
 
   const el = document.getElementById('diaryContent');
+  const petColor = safeColor(mail.fromPetColor);
   el.innerHTML = `
-    <p style="margin-bottom:4px;font-size:18px"><strong>${fromLabel} ${fromName}さんから</strong></p>
-    ${mail.fromPetColor ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${mail.fromPetColor};margin-right:4px;vertical-align:middle;"></span>` : ''}
-    <p style="font-size:14px;color:#a0855a;margin-bottom:10px">${dateStr}</p>
-    <p style="white-space:pre-wrap;font-size:16px">${mail.body}</p>
+    <p style="margin-bottom:4px;font-size:18px"><strong>${esc(fromLabel)} ${esc(fromName)}さんから</strong></p>
+    ${petColor ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${petColor};margin-right:4px;vertical-align:middle;"></span>` : ''}
+    <p style="font-size:14px;color:#a0855a;margin-bottom:10px">${esc(dateStr)}</p>
+    <p style="white-space:pre-wrap;font-size:16px">${esc(mail.body)}</p>
   `;
   document.querySelector('.diary-card h3').textContent = '📮 メール';
   document.getElementById('diaryOverlay').classList.add('show');
@@ -305,7 +322,7 @@ function renderMyId() {
   const div = document.createElement('div');
   div.id = 'myIdDisplay';
   div.style.cssText = 'padding:8px 0;font-size:14px;color:rgba(255,255,255,0.5);text-align:center;';
-  div.innerHTML = animalEmoji + ' <strong style="color:rgba(255,255,255,0.8)">' + ownerLabel + myPetName + '</strong>';
+  div.innerHTML = animalEmoji + ' <strong style="color:rgba(255,255,255,0.8)">' + esc(ownerLabel + myPetName) + '</strong>';
   compose.insertBefore(div, compose.firstChild);
 }
 
@@ -364,7 +381,7 @@ function updateRoomInfo(memberCount) {
     }
   }
   if (myRoom) {
-    infoEl.innerHTML = '🏠 クラスルーム: <strong style="color:rgba(255,255,255,0.8)">' + myRoom + '</strong> (' + memberCount + '人)';
+    infoEl.innerHTML = '🏠 クラスルーム: <strong style="color:rgba(255,255,255,0.8)">' + esc(myRoom) + '</strong> (' + memberCount + '人)';
   } else {
     infoEl.innerHTML = '⚠️ あいことばが ないので、みんなが みえるよ';
   }

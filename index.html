@@ -629,9 +629,10 @@ function pickSetupAnimal(btn) {
   updateSetupPreview();
 }
 function confirmSetup() {
-  const name = document.getElementById('setupName').value.trim() || 'ミハル';
-  const ownerName = document.getElementById('setupOwnerName').value.trim() || '';
-  const room = document.getElementById('setupRoom').value.trim() || '';
+  const clip = (v, max) => String(v || '').trim().replace(/[\u0000-\u001f\u007f]/g, '').slice(0, max);
+  const name = clip(document.getElementById('setupName').value, 20) || 'ミハル';
+  const ownerName = clip(document.getElementById('setupOwnerName').value, 20);
+  const room = clip(document.getElementById('setupRoom').value, 40);
   localStorage.setItem('postpet_setup', JSON.stringify({
     name: name, color: setupColor, animal: setupAnimal,
     ownerName: ownerName, room: room
