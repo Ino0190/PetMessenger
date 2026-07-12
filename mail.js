@@ -83,6 +83,7 @@ async function initMail() {
         fromPetName: myPetName,
         fromPetColor: myPetColor,
         to: 'あなた',
+        room: myRoom,
         subject: 'はじめまして！',
         body: 'はじめまして！ ぼくは ' + myPetName + 'だよ。\nきょうから いっしょに くらそうね。\n\nメールを おくると、ぼくが とどけにいくよ！\nおやつも ちょうだいね 🍰',
         date: new Date().toISOString(),
@@ -131,7 +132,9 @@ function startInboxListener() {
         if (change.type === 'added') {
           const msg = change.doc.data();
           console.log('[PostPet] 新着検出:', msg.fromPetName, 'fromPet:', msg.fromPet);
-          if (!msg.fromPet) {
+          // 今のクラスルーム以外からのメールは演出・通知しない
+          const sameRoom = !myRoom || msg.room === myRoom;
+          if (!msg.fromPet && sameRoom) {
             showToast('📬 ' + (msg.fromPetName || msg.from) + 'が メールを とどけてきたよ！');
             console.log('[PostPet] visitorPetArrive呼び出し:', typeof visitorPetArrive);
             if (typeof visitorPetArrive === 'function') {
@@ -191,6 +194,7 @@ async function sendMail() {
     fromOwnerName: myOwnerName,
     to: recipientId,
     toPetName: recipientName,
+    room: myRoom,
     subject: body.substring(0, 20) + (body.length > 20 ? '...' : ''),
     body: body,
     date: new Date().toISOString(),
@@ -223,13 +227,25 @@ async function sendMail() {
   bodyEl.value = '';
 }
 
+// 今のクラスルームで表示する受信メールだけを返す。
+// 自分のペットからのメール(fromPet)は常に表示。
+// あいことば未設定(myRoom空)のときは全部表示（＝みんな見える仕様）。
+// room未設定の過去メールは、別のクラスルームにいるときは隠す。
+function visibleInbox() {
+  return MAIL_STORE.inbox.filter((m) => {
+    if (m.fromPet) return true;
+    if (!myRoom) return true;
+    return m.room === myRoom;
+  });
+}
+
 // メールリスト描画
 function renderMailList() {
   const list = document.getElementById('mailList');
   let items = [];
 
   if (currentTab === 'inbox') {
-    items = MAIL_STORE.inbox;
+    items = visibleInbox();
   } else if (currentTab === 'sent') {
     items = MAIL_STORE.sent;
   } else if (currentTab === 'diary') {
@@ -272,7 +288,7 @@ function renderMailList() {
 
 // メール開封
 async function openMail(tab, index) {
-  const items = tab === 'inbox' ? MAIL_STORE.inbox : MAIL_STORE.sent;
+  const items = tab === 'inbox' ? visibleInbox() : MAIL_STORE.sent;
   const mail = items[index];
   if (!mail) return;
 
@@ -413,6 +429,7 @@ async function sendMailToAll(body) {
     fromPetAnimal: myPetAnimal,
     fromOwnerName: myOwnerName,
     toPetName: 'みんな',
+    room: myRoom,
     subject: body.substring(0, 20) + (body.length > 20 ? '...' : ''),
     body: body,
     date: new Date().toISOString(),
@@ -465,6 +482,7 @@ async function petSendsSpontaneousMail() {
     fromPetName: myPetName,
     fromPetColor: myPetColor,
     to: 'あなた',
+    room: myRoom,
     subject: myPetName + 'からの おてがみ',
     body: messages[Math.floor(Math.random() * messages.length)],
     date: new Date().toISOString(),
