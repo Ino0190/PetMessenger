@@ -99,12 +99,17 @@ function petLoop(ts) {
   // 移動（3D版ではroom.jsのanimate()が処理するので座標同期のみ）
   const dx = PET.targetX - PET.x;
   const dy = PET.targetY - PET.y;
-  // 寝ている/横になっている/読書・水やり中は移動しない
-  const isSleeping = PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting'
-    || PET.state === 'reading' || PET.state === 'watering';
-  if (!isSleeping && (Math.abs(dx) > 0.005 || Math.abs(dy) > 0.005)) {
+  // その場でポーズする状態は移動で上書きしない
+  // （伸び・跳ね・おやつ等が1フレームでwanderに戻される「一瞬で残像」バグの対策）
+  const stationary = PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting'
+    || PET.state === 'reading' || PET.state === 'watering'
+    || PET.state === 'stretch' || PET.state === 'hopping' || PET.state === 'eat';
+  // しきい値は3D側の到着判定(3D 0.05 = 論理座標 0.01)より大きくする。
+  // 小さいと到着後の残差で永遠にwander扱いになる
+  if (!stationary && (Math.abs(dx) > 0.012 || Math.abs(dy) > 0.012)) {
     PET.direction = dx > 0 ? 1 : -1;
-    PET.state = 'wander';
+    // 歩きながらのポーズ（窓を見に行く等）は状態を保つ。idleのときだけwanderへ
+    if (PET.state === 'idle') PET.state = 'wander';
   } else if (PET.state === 'wander') {
     PET.state = 'idle';
   }
@@ -360,12 +365,16 @@ function autoAction() {
     }
   } else if (r < 0.58) {
     // 伸び（その場でバンザイ）
+    PET.targetX = PET.x;
+    PET.targetY = PET.y;
     PET.state = 'stretch';
     PET.stateTimer = 150;
     PET.reaction = '🙆';
     PET.reactionTimer = 80;
   } else if (r < 0.64) {
     // 跳ねる（その場でぴょんぴょん）
+    PET.targetX = PET.x;
+    PET.targetY = PET.y;
     PET.state = 'hopping';
     PET.stateTimer = 120;
     PET.reaction = '🎵';
@@ -389,6 +398,8 @@ function autoAction() {
     }
   } else if (r < 0.88) {
     // 寝る
+    PET.targetX = PET.x;
+    PET.targetY = PET.y;
     PET.state = 'sleep';
     PET.stateTimer = 120;
   }
