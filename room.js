@@ -590,7 +590,17 @@ function buildPet3D() {
   // 頭グループ（首振り・傾げ用）
   const headGroup = new THREE.Group();
   headGroup.position.y = 0.75;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), main);
+  let head;
+  if (petAnimal === 'cat') {
+    // ネコ: ダイヤモンド型（八面体）の頭。頬が張って顎が尖るひし形シルエット。
+    // toNonIndexed + computeVertexNormals でローポリのカクカクした面を出す
+    const headGeo = new THREE.OctahedronGeometry(0.33, 1).toNonIndexed();
+    headGeo.computeVertexNormals();
+    head = new THREE.Mesh(headGeo, main);
+    head.scale.set(1.1, 0.85, 0.95); // 横に広く・少し低く
+  } else {
+    head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), main);
+  }
   head.castShadow = true; headGroup.add(head);
   // マズル（動物種で形を変える）
   const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), white);
@@ -644,16 +654,23 @@ function buildPet3D() {
   petEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), blk);
   petEyeR.position.set(0.1, 0.03, 0.28); petEyeR.scale.set(0.7, 1.1, 0.3);
   headGroup.add(petEyeR);
+  if (petAnimal === 'cat') {
+    // ダイヤモンド型の頭は面の位置が球と違うので、目を面の上に出るよう調整
+    petWhiteL.position.z = petWhiteR.position.z = 0.29;
+    petEyeL.position.z = petEyeR.position.z = 0.305;
+    petWhiteL.scale.z = petWhiteR.scale.z = 0.35;
+    petEyeL.scale.z = petEyeR.scale.z = 0.4;
+  }
   // 鼻（動物種で変える）
   if (petAnimal === 'cat') {
-    // ネコ: 小さいピンクの三角鼻＋ひげ
+    // ネコ: 小さいピンクの三角鼻＋ひげ（ダイヤモンド型の頭の面に合わせた位置）
     const noseM = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), nose);
-    noseM.position.set(0, -0.04, 0.35); noseM.scale.set(1.3, 0.7, 1); headGroup.add(noseM);
+    noseM.position.set(0, -0.04, 0.32); noseM.scale.set(1.3, 0.7, 1); headGroup.add(noseM);
     const whiskerMat = new THREE.MeshBasicMaterial({ color: 0xcccccc });
     for (const side of [-1, 1]) {
       for (let wi = 0; wi < 2; wi++) {
         const w = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.16, 4), whiskerMat);
-        w.position.set(side * 0.2, -0.06 - wi * 0.03, 0.28);
+        w.position.set(side * 0.18, -0.06 - wi * 0.03, 0.26);
         w.rotation.z = Math.PI / 2 + side * (0.15 + wi * 0.12);
         headGroup.add(w);
       }
