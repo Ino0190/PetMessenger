@@ -671,15 +671,38 @@ function buildPet3D() {
   }
   petGroup.add(headGroup);
   petGroup.userData.head = headGroup;
-  // しっぽ（ネコ: 長い / イヌ: 上向きの太め / クマ: なし）
+  // しっぽ（ネコ: 3節でしなやかに揺れる / イヌ: パタパタ振る / クマ: なし）
   if (petAnimal === 'cat') {
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 0.45, 8), main);
-    tail.position.set(0, 0.35, -0.25); tail.rotation.x = -0.7; tail.rotation.z = 0.25;
-    petGroup.add(tail);
+    // 3節を連結して、animate()で位相をずらして揺らすと波打つ
+    const tailBase = new THREE.Group();
+    tailBase.position.set(0, 0.32, -0.18);
+    tailBase.rotation.x = -1.0; // 上向きに立てる
+    petGroup.add(tailBase);
+    const tailSegs = [];
+    let cur = tailBase;
+    for (let i = 0; i < 3; i++) {
+      const seg = new THREE.Group();
+      if (i > 0) seg.position.y = 0.15;
+      const mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.032 - i * 0.007, 0.026 - i * 0.007, 0.16, 8), main);
+      mesh.position.y = 0.08;
+      seg.add(mesh);
+      cur.add(seg);
+      tailSegs.push(seg);
+      cur = seg;
+    }
+    petGroup.userData.tailSegs = tailSegs;
+    petGroup.userData.tailType = 'cat';
   } else if (petAnimal === 'dog') {
+    const tailG = new THREE.Group();
+    tailG.position.set(0, 0.42, -0.24);
+    tailG.rotation.x = -1.1;
     const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.3, 8), main);
-    tail.position.set(0, 0.42, -0.24); tail.rotation.x = -1.1;
-    petGroup.add(tail);
+    tail.position.y = 0.12;
+    tailG.add(tail);
+    petGroup.add(tailG);
+    petGroup.userData.tail = tailG;
+    petGroup.userData.tailType = 'dog';
   }
   // 手（縦長楕円＝ソーセージ型、Groupでピボット化）
   const armLGroup = new THREE.Group();
@@ -751,7 +774,8 @@ function animate() {
     const dz = tz - petGroup.position.z;
 
     // ポーズ中は移動しない
-    const posing = PET.state === 'lyingOnRug' || PET.state === 'sitting' || PET.state === 'hopping' || PET.state === 'stretch';
+    const posing = PET.state === 'lyingOnRug' || PET.state === 'sitting' || PET.state === 'hopping' || PET.state === 'stretch'
+      || PET.state === 'reading' || PET.state === 'watering';
 
     if (!posing && (Math.abs(dx) > 0.05 || Math.abs(dz) > 0.05)) {
       petGroup.position.x += dx * 0.04;
@@ -839,17 +863,50 @@ function animate() {
         h.rotation.x += (targetX - h.rotation.x) * 0.15;
         h.rotation.z = 0;
       } else if (PET.state === 'idle' || PET.state === 'sitting') {
-        // ゆっくり横を見る＋たまに首を傾げる
-        h.rotation.y = Math.sin(PET.bobPhase * 0.4) * 0.25;
-        h.rotation.z = Math.sin(PET.bobPhase * 0.25) * 0.1;
-        // 上下の傾き（ボール追従で下を向いた分）を正面に戻す
-        h.rotation.x *= 0.9;
+        // 約14秒周期の最初の2.5秒は、こちら（カメラ＝画面のむこうの飼い主）を見る
+        const camGlance = (Date.now() % 14000) < 2500;
+        if (camGlance) {
+          const lookAngle = Math.atan2(
+            camera.position.x - petGroup.position.x,
+            camera.position.z - petGroup.position.z
+          );
+          let diff = Math.atan2(Math.sin(lookAngle - petGroup.rotation.y), Math.cos(lookAngle - petGroup.rotation.y));
+          // 首の可動域を超えるとき（背中を向けている時）は無理に見ない
+          if (Math.abs(diff) < 1.1) {
+            h.rotation.y += (diff - h.rotation.y) * 0.08;
+            h.rotation.z += (0.14 - h.rotation.z) * 0.08; // ちょっと首をかしげて見つめる
+            h.rotation.x *= 0.9;
+          } else {
+            h.rotation.y = Math.sin(PET.bobPhase * 0.4) * 0.25;
+            h.rotation.z = Math.sin(PET.bobPhase * 0.25) * 0.1;
+            h.rotation.x *= 0.9;
+          }
+        } else {
+          // ゆっくり横を見る＋たまに首を傾げる
+          h.rotation.y = Math.sin(PET.bobPhase * 0.4) * 0.25;
+          h.rotation.z = Math.sin(PET.bobPhase * 0.25) * 0.1;
+          // 上下の傾き（ボール追従で下を向いた分）を正面に戻す
+          h.rotation.x *= 0.9;
+        }
       } else {
         // 歩行中等は正面に戻す
         h.rotation.y *= 0.9;
         h.rotation.z *= 0.9;
         h.rotation.x *= 0.9;
       }
+    }
+
+    // しっぽのアニメーション
+    if (petGroup.userData.tailType === 'cat' && petGroup.userData.tailSegs) {
+      // ネコ: 3節を位相をずらして揺らす→しなやかな波打ち
+      petGroup.userData.tailSegs.forEach((seg, i) => {
+        seg.rotation.z = Math.sin(PET.bobPhase * 0.8 - i * 0.7) * 0.28;
+        seg.rotation.x = Math.sin(PET.bobPhase * 0.5 - i * 0.5) * 0.1;
+      });
+    } else if (petGroup.userData.tailType === 'dog' && petGroup.userData.tail) {
+      // イヌ: パタパタ。嬉しいとき（リアクション中・おやつ中）は速く振る
+      const wagSpeed = (PET.reaction || PET.state === 'eat') ? 6 : 1.5;
+      petGroup.userData.tail.rotation.z = Math.sin(PET.bobPhase * wagSpeed) * 0.4;
     }
   }
 
@@ -900,11 +957,79 @@ function animate() {
     scene.background.setHex(skyColor);
   }
 
+  // 訪問ペットの滞在アニメーション（自分のペットに付いて歩く・一緒に遊ぶ）
+  if (visitorGroup && visitorStaying && petGroup && typeof PET !== 'undefined' && !PET.delivering) {
+    let tx, tz;
+    if (playMode && throwBall) {
+      // ボール投げ中は一緒にボールを追いかける（少しずらした位置へ）
+      tx = throwBall.position.x + 0.35;
+      tz = throwBall.position.z + 0.35;
+    } else {
+      // ふだんは自分のペットの右横に付いていく
+      tx = petGroup.position.x + 0.6;
+      tz = petGroup.position.z + 0.1;
+    }
+    const vdx = tx - visitorGroup.position.x;
+    const vdz = tz - visitorGroup.position.z;
+    if (Math.abs(vdx) > 0.08 || Math.abs(vdz) > 0.08) {
+      // とことこ歩いて付いていく
+      visitorGroup.position.x += vdx * 0.03;
+      visitorGroup.position.z += vdz * 0.03;
+      visitorGroup.position.y = Math.abs(Math.sin(PET.bobPhase * 2.5)) * 0.04;
+      visitorGroup.rotation.y = Math.atan2(vdx, vdz);
+    } else if (PET.state === 'eat') {
+      // 自分のペットがおやつ中なら、隣で一緒にもぐもぐ
+      visitorGroup.position.y = Math.abs(Math.sin(PET.bobPhase * 3)) * 0.05;
+      visitorGroup.rotation.y = petGroup.rotation.y;
+    } else {
+      // その場でゆらゆら＋自分のペットの方を向く
+      visitorGroup.position.y = Math.sin(PET.bobPhase) * 0.02;
+      visitorGroup.rotation.y = Math.atan2(
+        petGroup.position.x - visitorGroup.position.x,
+        petGroup.position.z - visitorGroup.position.z
+      );
+    }
+    // ときどき首をかしげる
+    if (visitorGroup.userData.head) {
+      visitorGroup.userData.head.rotation.z = Math.sin(PET.bobPhase * 0.3) * 0.08;
+    }
+  }
+
   // 自律ポーズアニメーション
   if (petGroup && petGroup.userData.armL && typeof PET !== 'undefined') {
     if (PET.state === 'lookWindow') {
-      petGroup.userData.armR.rotation.x = -1.0 + Math.sin(PET.bobPhase * 1.5) * 0.1;
-      petGroup.userData.armR.rotation.z = -0.3;
+      // 窓の近くに着いたら背伸びして外を見る（つま先立ち＋両手を上げて見上げる）
+      if (petGroup.position.z < -1.0) {
+        const tip = Math.abs(Math.sin(PET.bobPhase * 0.8)) * 0.04;
+        petGroup.position.y = 0.09 + tip;
+        petGroup.userData.armL.rotation.x = -1.2;
+        petGroup.userData.armR.rotation.x = -1.2 + Math.sin(PET.bobPhase * 1.5) * 0.08;
+        petGroup.userData.armL.rotation.z = -0.25;
+        petGroup.userData.armR.rotation.z = 0.25;
+        if (petGroup.userData.head) petGroup.userData.head.rotation.x = -0.35;
+      } else {
+        petGroup.userData.armR.rotation.x = -1.0 + Math.sin(PET.bobPhase * 1.5) * 0.1;
+        petGroup.userData.armR.rotation.z = -0.3;
+      }
+    } else if (PET.state === 'reading') {
+      // 腹這いで本を読む（前に倒れて頭を上げる）
+      petGroup.position.y = -0.14;
+      petGroup.rotation.x = 1.25;
+      if (petGroup.userData.head) petGroup.userData.head.rotation.x = -1.0;
+      petGroup.userData.armL.rotation.x = -0.5;
+      petGroup.userData.armR.rotation.x = -0.5;
+    } else if (PET.state === 'watering') {
+      // ジョウロで水やり（腕を前に出して傾けて注ぐ）
+      petGroup.userData.armR.rotation.x = -0.9;
+      if (petProp) {
+        petProp.rotation.x = -0.5 + Math.sin(PET.bobPhase * 1.2) * 0.12;
+        if (petProp.userData.drops) {
+          petProp.userData.drops.forEach((d, i) => {
+            const tt = (PET.bobPhase * 0.35 + i * 0.33) % 1;
+            d.position.set(0, 0.02 - tt * 0.4, 0.19 + tt * 0.12);
+          });
+        }
+      }
     } else if (PET.state === 'lyingOnRug') {
       // ゴロン（横向きに寝転がる）
       petGroup.position.y = -0.05;
@@ -953,10 +1078,23 @@ function onResize() {
   renderer.setSize(roomW, roomH);
 }
 
+// ペットの小道具（本・ジョウロ）
+let petProp = null;    // ペットが手に持つ小道具
+let floorProp = null;  // 床に置く小道具（開いた本）
+
+function removePetProps() {
+  if (petProp && petGroup) { petGroup.remove(petProp); }
+  petProp = null;
+  if (floorProp && scene) { scene.remove(floorProp); }
+  floorProp = null;
+}
+
 // ペットの姿勢を完全にデフォルト（立ち姿）へ戻す
 // 寝転がり・座り・伸び・跳ね・窓見るなどのポーズを一括リセットする
 function resetPetPose() {
   if (!petGroup) return;
+  // 小道具（本・ジョウロ）を片付ける
+  removePetProps();
   petGroup.rotation.x = 0;
   petGroup.rotation.z = 0;
   petGroup.position.y = 0;
@@ -976,6 +1114,146 @@ function resetPetPose() {
   }
 }
 
+// ===== 自律行動: 本を読む・水やり =====
+
+// 手に持つ本（閉じた状態）
+function spawnCarriedBook() {
+  const book = new THREE.Group();
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.18),
+    new THREE.MeshLambertMaterial({ color: 0xc0392b }));
+  book.add(cover);
+  const pages = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.16),
+    new THREE.MeshLambertMaterial({ color: 0xfffff0 }));
+  pages.position.y = 0.02;
+  book.add(pages);
+  book.position.set(0.2, 0.32, 0.2);
+  book.rotation.z = 0.3;
+  petGroup.add(book);
+  petProp = book;
+}
+
+// 床に開いて置く本
+function spawnOpenBook() {
+  const g = new THREE.Group();
+  const pageMat = new THREE.MeshLambertMaterial({ color: 0xfffff8 });
+  const coverMat = new THREE.MeshLambertMaterial({ color: 0xc0392b });
+  const pL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.2), pageMat);
+  pL.position.set(-0.08, 0.012, 0); pL.rotation.z = 0.12; g.add(pL);
+  const pR = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.2), pageMat);
+  pR.position.set(0.08, 0.012, 0); pR.rotation.z = -0.12; g.add(pR);
+  const cv = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.01, 0.22), coverMat);
+  g.add(cv);
+  // ペットの正面の床に置く
+  const fx = petGroup.position.x + Math.sin(petGroup.rotation.y) * 0.55;
+  const fz = petGroup.position.z + Math.cos(petGroup.rotation.y) * 0.55;
+  g.position.set(fx, 0.02, fz);
+  g.rotation.y = petGroup.rotation.y;
+  scene.add(g);
+  floorProp = g;
+}
+
+// ジョウロ（水滴付き）
+function spawnWateringCan() {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0x5dade2 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 10), mat);
+  g.add(body);
+  const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.16, 6), mat);
+  spout.position.set(0, 0.03, 0.1);
+  spout.rotation.x = 1.1;
+  g.add(spout);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 6, 12), mat);
+  handle.position.set(0, 0.06, -0.07);
+  g.add(handle);
+  // 水滴（注いでいる間、下に落ちるアニメーション）
+  const dropMat = new THREE.MeshBasicMaterial({ color: 0x74b9ff });
+  g.userData.drops = [];
+  for (let i = 0; i < 3; i++) {
+    const d = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 6), dropMat);
+    d.position.set(0, 0.02, 0.19);
+    g.add(d);
+    g.userData.drops.push(d);
+  }
+  g.position.set(0.24, 0.35, 0.18);
+  petGroup.add(g);
+  petProp = g;
+}
+
+// 本棚から本を取ってラグで読む（歩く→取る→運ぶ→腹這いで読む）
+function startReading() {
+  if (!petGroup || PET.delivering || playMode || pettingMode || petProp || floorProp) return;
+  // 1) 本棚の前まで歩く（本棚は x=-2.2, z=-2.7）
+  PET.targetX = 0.10;
+  PET.targetY = 0.08;
+  const begun = Date.now();
+  const t1 = setInterval(() => {
+    // 中断条件: タイムアウト・配達・別の行動に切り替わった
+    if (Date.now() - begun > 12000 || PET.delivering
+        || (PET.state !== 'idle' && PET.state !== 'wander')) {
+      clearInterval(t1);
+      return;
+    }
+    if (Math.abs(petGroup.position.x - (-2.0)) < 0.35 && Math.abs(petGroup.position.z - (-2.1)) < 0.35) {
+      clearInterval(t1);
+      // 2) 本を手に取ってラグへ運ぶ
+      spawnCarriedBook();
+      PET.reaction = '📖';
+      PET.reactionTimer = 40;
+      PET.targetX = 0.5;
+      PET.targetY = 0.6;
+      const t2 = setInterval(() => {
+        if (Date.now() - begun > 24000 || PET.delivering || !petProp
+            || (PET.state !== 'idle' && PET.state !== 'wander')) {
+          clearInterval(t2);
+          removePetProps();
+          return;
+        }
+        if (Math.abs(petGroup.position.x) < 0.35 && Math.abs(petGroup.position.z - 0.5) < 0.35) {
+          clearInterval(t2);
+          // 3) 本を床に開いて腹這いで読む
+          petGroup.remove(petProp);
+          petProp = null;
+          spawnOpenBook();
+          PET.targetX = PET.x;
+          PET.targetY = PET.y;
+          PET.state = 'reading';
+          PET.stateTimer = 350;
+          PET.reaction = '📖';
+          PET.reactionTimer = 60;
+        }
+      }, 100);
+    }
+  }, 100);
+}
+
+// 角の植物にジョウロで水をあげる（歩く→植物を向く→注ぐ）
+function startWatering() {
+  if (!petGroup || PET.delivering || playMode || pettingMode || petProp || floorProp) return;
+  // 植物は部屋の角 (2.4, -2.4)。その手前まで歩く
+  PET.targetX = 0.88;
+  PET.targetY = 0.12;
+  const begun = Date.now();
+  const t = setInterval(() => {
+    if (Date.now() - begun > 12000 || PET.delivering
+        || (PET.state !== 'idle' && PET.state !== 'wander')) {
+      clearInterval(t);
+      return;
+    }
+    if (Math.abs(petGroup.position.x - 1.9) < 0.35 && Math.abs(petGroup.position.z - (-1.9)) < 0.35) {
+      clearInterval(t);
+      // 植物の方を向いてジョウロで注ぐ
+      petGroup.rotation.y = Math.atan2(2.4 - petGroup.position.x, -2.4 - petGroup.position.z);
+      spawnWateringCan();
+      PET.targetX = PET.x;
+      PET.targetY = PET.y;
+      PET.state = 'watering';
+      PET.stateTimer = 250;
+      PET.reaction = '💧';
+      PET.reactionTimer = 60;
+    }
+  }, 100);
+}
+
 // 3Dクリック（レイキャスト → 床の交点を取得）
 function onRoomClick3D(e) {
   if (typeof PET !== 'undefined' && PET.delivering) return;
@@ -984,7 +1262,8 @@ function onRoomClick3D(e) {
 
   // ポーズ中ならまず起き上がる
   if (typeof PET !== 'undefined') {
-    const wasPosing = PET.state === 'lyingOnRug' || PET.state === 'sitting' || PET.state === 'hopping' || PET.state === 'stretch' || PET.state === 'lookWindow';
+    const wasPosing = PET.state === 'lyingOnRug' || PET.state === 'sitting' || PET.state === 'hopping' || PET.state === 'stretch' || PET.state === 'lookWindow'
+      || PET.state === 'reading' || PET.state === 'watering';
     if (wasPosing) {
       PET.state = 'idle';
       PET.stateTimer = 0;
@@ -1855,6 +2134,7 @@ function petJump() {
 
 let visitorGroup = null;
 let visitorAnimating = false;
+let visitorStaying = false; // 手紙を渡したあと、しばらく部屋で一緒に過ごす
 
 function buildVisitorPet(hexColor) {
   const group = new THREE.Group();
@@ -2040,8 +2320,14 @@ function visitorPetArrive(petColor, petName, callback) {
     // 自分のペットがジャンプして喜ぶ
     if (typeof petJump === 'function') petJump();
 
-    // 少し間を置いて帰る
-    setTimeout(() => { visitorLeave(); }, 800);
+    // すぐには帰らず、しばらく部屋で一緒に過ごす
+    // （animate()内で自分のペットに付いて歩く・一緒におやつ・ボール追いかけ）
+    visitorStaying = true;
+    showToast('しばらく あそんでいく みたいだよ！');
+    setTimeout(() => {
+      visitorStaying = false;
+      if (visitorGroup) visitorLeave();
+    }, 45000);
   }
 
   function visitorLeave() {
@@ -2084,6 +2370,7 @@ function visitorPetArrive(petColor, petName, callback) {
   function finishVisit() {
     if (visitorGroup) { scene.remove(visitorGroup); visitorGroup = null; }
     visitorAnimating = false;
+    visitorStaying = false;
     // 自分のペットの位置をリセット
     if (petGroup) {
       petGroup.position.y = 0;

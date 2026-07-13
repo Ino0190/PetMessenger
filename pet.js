@@ -58,6 +58,9 @@ const DIARY_TEMPLATES = [
   'おふろの あとは からだが ぽかぽか するにゃ。すきじゃないけど。',
   'ゆうやけが きれいだったにゃ。まどが オレンジいろに なった。',
   'よるの そらに ほしが みえたにゃ。きらきら してた。',
+  'ほんだなから えほんを もってきて、ラグで ごろごろ よんだにゃ。',
+  'うえきさんに おみずを あげたにゃ。おおきく なってね。',
+  'せのびして まどの そとを みたにゃ。とりが とんでた！',
 ];
 
 let petAnimFrame = null;
@@ -96,8 +99,9 @@ function petLoop(ts) {
   // 移動（3D版ではroom.jsのanimate()が処理するので座標同期のみ）
   const dx = PET.targetX - PET.x;
   const dy = PET.targetY - PET.y;
-  // 寝ている/横になっている時は移動しない
-  const isSleeping = PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting';
+  // 寝ている/横になっている/読書・水やり中は移動しない
+  const isSleeping = PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting'
+    || PET.state === 'reading' || PET.state === 'watering';
   if (!isSleeping && (Math.abs(dx) > 0.005 || Math.abs(dy) > 0.005)) {
     PET.direction = dx > 0 ? 1 : -1;
     PET.state = 'wander';
@@ -108,22 +112,11 @@ function petLoop(ts) {
   if (PET.stateTimer > 0) {
     PET.stateTimer--;
     if (PET.stateTimer === 0) {
-      // ポーズリセット（腹這い等から戻す）
-      if ((PET.state === 'lyingOnRug' || PET.state === 'lookWindow' || PET.state === 'stretch' || PET.state === 'hopping' || PET.state === 'sitting') 
-          && typeof petGroup !== 'undefined' && petGroup) {
-        petGroup.rotation.x = 0;
-        petGroup.rotation.z = 0;
-        petGroup.position.y = 0;
-        if (petGroup.userData.armL) {
-          petGroup.userData.armL.rotation.x = 0;
-          petGroup.userData.armR.rotation.x = 0;
-          petGroup.userData.armL.rotation.z = -0.35;
-          petGroup.userData.armR.rotation.z = 0.35;
-          petGroup.userData.legL.rotation.x = 0;
-          petGroup.userData.legR.rotation.x = 0;
-          petGroup.userData.legL.rotation.z = 0;
-          petGroup.userData.legR.rotation.z = 0;
-        }
+      // ポーズリセット（腹這い・読書・水やり等から戻す。小道具も片付ける）
+      if ((PET.state === 'lyingOnRug' || PET.state === 'lookWindow' || PET.state === 'stretch' || PET.state === 'hopping' || PET.state === 'sitting'
+           || PET.state === 'reading' || PET.state === 'watering')
+          && typeof resetPetPose === 'function') {
+        resetPetPose();
       }
       PET.state = 'idle';
     }
@@ -273,9 +266,18 @@ function petAction(action) {
     showToast('ミハルは おでかけちゅう だよ');
     return;
   }
+  // 別のモード中に他のコマンドを選んだら、前のモードを自動で解除する
+  // （「やめる」ボタンを押さなくても切り替えられる）
+  if (typeof playMode !== 'undefined' && playMode && action !== 'play') {
+    exitPlayMode();
+  }
+  if (typeof pettingMode !== 'undefined' && pettingMode && action !== 'pet') {
+    exitPettingMode();
+  }
   // 寝ている・ポーズ中なら必ず起き上がってから動作する
   const posing = PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting'
-    || PET.state === 'stretch' || PET.state === 'hopping' || PET.state === 'lookWindow';
+    || PET.state === 'stretch' || PET.state === 'hopping' || PET.state === 'lookWindow'
+    || PET.state === 'reading' || PET.state === 'watering';
   if (posing) {
     wakeUpPet();
   }
@@ -319,8 +321,9 @@ function autoAction() {
   if (PET.delivering || (PET.state !== 'idle' && PET.state !== 'wander')) return;
   // 遊ぶモード中は自律行動しない
   if (typeof playMode !== 'undefined' && playMode) return;
-  // 寝ている/横になっている状態なら何もしない（stateTimerで自然に起きるのを待つ）
-  if (PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting') return;
+  // 寝ている/横になっている/読書・水やり中なら何もしない（stateTimerで自然に起きるのを待つ）
+  if (PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting'
+    || PET.state === 'reading' || PET.state === 'watering') return;
   // 前のポーズをリセット
   if (typeof petGroup !== 'undefined' && petGroup && petGroup.userData.armL) {
     petGroup.rotation.x = 0;
@@ -355,18 +358,24 @@ function autoAction() {
       PET.reaction = '😴';
       PET.reactionTimer = 50;
     }
-  } else if (r < 0.65) {
+  } else if (r < 0.58) {
     // 伸び（その場でバンザイ）
     PET.state = 'stretch';
     PET.stateTimer = 150;
     PET.reaction = '🙆';
     PET.reactionTimer = 80;
-  } else if (r < 0.72) {
+  } else if (r < 0.64) {
     // 跳ねる（その場でぴょんぴょん）
     PET.state = 'hopping';
     PET.stateTimer = 120;
     PET.reaction = '🎵';
     PET.reactionTimer = 60;
+  } else if (r < 0.70) {
+    // 本棚から本を取ってきてラグで読む
+    if (typeof startReading === 'function') startReading();
+  } else if (r < 0.76) {
+    // ジョウロで角の植物に水をあげる
+    if (typeof startWatering === 'function') startWatering();
   } else if (r < 0.80) {
     // ラグの上で座る（ラグの近くにいる時だけ）
     const onRug = Math.abs(PET.x - 0.5) < 0.15 && Math.abs(PET.y - 0.6) < 0.15;
@@ -435,6 +444,9 @@ function autoWriteDiary() {
 let diaryPage = 0;
 
 function showDiary() {
+  // 遊ぶ/なでるモード中なら自動で解除してから日記を開く
+  if (typeof playMode !== 'undefined' && playMode) exitPlayMode();
+  if (typeof pettingMode !== 'undefined' && pettingMode) exitPettingMode();
   diaryPage = 0;
   renderDiaryPage();
   document.getElementById('diaryOverlay').classList.add('show');

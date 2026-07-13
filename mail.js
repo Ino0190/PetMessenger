@@ -11,6 +11,15 @@ function esc(value) {
     .replace(/'/g, '&#39;');
 }
 
+// あいことばの正規化。全角→半角(NFKC)・小文字化・空白除去。
+// 「PS」「ps」「ＰＳ」「P S」を同じ部屋として扱う（表記ゆれで人数が欠ける問題の対策）
+function normRoom(value) {
+  return String(value == null ? '' : value)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\s+/g, '');
+}
+
 // 色文字列のサニタイズ（style属性内に入れるためhex/rgbのみ許可、それ以外は無色）
 function safeColor(value) {
   const v = String(value == null ? '' : value).trim();
@@ -47,7 +56,7 @@ async function initMail() {
       myPetColor = cfg.color || '#ffb347';
       myPetAnimal = cfg.animal || 'bear';
       myOwnerName = cfg.ownerName || '';
-      myRoom = cfg.room || '';
+      myRoom = normRoom(cfg.room || '');
     } else {
       myPetName = PET.name || 'ミハル';
       myPetColor = '#ffb347';
