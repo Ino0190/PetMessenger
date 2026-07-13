@@ -327,6 +327,7 @@ function buildCalendar(x, y, z) {
 }
 
 let doorPivot = null; // ドア回転用
+let doorSky = null;   // ドアの外の空（時間帯で色が変わる）
 
 function buildDoor(x, y, z) {
   // ドア枠
@@ -347,13 +348,13 @@ function buildDoor(x, y, z) {
 
   // ドアの奥に外の景色（壁の外側に配置）
   const outsideX = x - 0.15;
-  // 空
+  // 空（時間帯で窓と同じ色に変わる → animate()でdoorSkyを更新）
   const skyGeo = new THREE.PlaneGeometry(1.0, 2.2);
   const skyGrad = new THREE.MeshBasicMaterial({ color: 0x87ceeb });
-  const sky = new THREE.Mesh(skyGeo, skyGrad);
-  sky.position.set(outsideX, 1.1, z);
-  sky.rotation.y = Math.PI / 2;
-  roomGroup.add(sky);
+  doorSky = new THREE.Mesh(skyGeo, skyGrad);
+  doorSky.position.set(outsideX, 1.1, z);
+  doorSky.rotation.y = Math.PI / 2;
+  roomGroup.add(doorSky);
   // 地面（緑）
   const groundGeo = new THREE.PlaneGeometry(1.0, 0.6);
   const groundMat = new THREE.MeshBasicMaterial({ color: 0x7ec850 });
@@ -577,9 +578,10 @@ function buildPet3D() {
   const blk = new THREE.MeshLambertMaterial({ color: 0x333333 });
   const nose = new THREE.MeshLambertMaterial({ color: 0xe91e63 });
 
-  // 体（小さめ）
+  // 体（小さめ。ネコは細身）
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), main);
   body.position.y = 0.35; body.scale.set(1, 0.85, 0.9); body.castShadow = true;
+  if (petAnimal === 'cat') body.scale.set(0.85, 0.95, 0.8);
   petGroup.add(body);
   // おなか（白）
   const belly = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), white);
@@ -590,19 +592,43 @@ function buildPet3D() {
   headGroup.position.y = 0.75;
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), main);
   head.castShadow = true; headGroup.add(head);
-  // マズル
+  // マズル（動物種で形を変える）
   const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), white);
   muzzle.position.set(0, -0.08, 0.22); muzzle.scale.set(1, 0.7, 0.8);
+  if (petAnimal === 'cat') {
+    muzzle.scale.set(0.8, 0.55, 0.65); // ネコ: 小さめの丸い口元
+  } else if (petAnimal === 'dog') {
+    muzzle.scale.set(1, 0.75, 1.15); muzzle.position.z = 0.24; // イヌ: 長めのマズル
+  }
   headGroup.add(muzzle);
-  // 耳
-  const earL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), main);
-  earL.position.set(-0.22, 0.25, 0); headGroup.add(earL);
-  const earR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), main);
-  earR.position.set(0.22, 0.25, 0); headGroup.add(earR);
-  const earInL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), dark);
-  earInL.position.set(-0.22, 0.25, 0.05); headGroup.add(earInL);
-  const earInR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), dark);
-  earInR.position.set(0.22, 0.25, 0.05); headGroup.add(earInR);
+  // 耳（動物種で形を変える）
+  if (petAnimal === 'cat') {
+    // ネコ: 頭の上の三角耳
+    const earL = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 4), main);
+    earL.position.set(-0.17, 0.33, 0); earL.rotation.z = 0.25; headGroup.add(earL);
+    const earR = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 4), main);
+    earR.position.set(0.17, 0.33, 0); earR.rotation.z = -0.25; headGroup.add(earR);
+    const earInL = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), dark);
+    earInL.position.set(-0.17, 0.32, 0.03); earInL.rotation.z = 0.25; headGroup.add(earInL);
+    const earInR = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), dark);
+    earInR.position.set(0.17, 0.32, 0.03); earInR.rotation.z = -0.25; headGroup.add(earInR);
+  } else if (petAnimal === 'dog') {
+    // イヌ: 横に垂れる耳（濃い色）
+    const earL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), dark);
+    earL.position.set(-0.28, 0.08, -0.02); earL.scale.set(0.55, 1.5, 0.5); headGroup.add(earL);
+    const earR = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), dark);
+    earR.position.set(0.28, 0.08, -0.02); earR.scale.set(0.55, 1.5, 0.5); headGroup.add(earR);
+  } else {
+    // クマ: 丸耳
+    const earL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), main);
+    earL.position.set(-0.22, 0.25, 0); headGroup.add(earL);
+    const earR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), main);
+    earR.position.set(0.22, 0.25, 0); headGroup.add(earR);
+    const earInL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), dark);
+    earInL.position.set(-0.22, 0.25, 0.05); headGroup.add(earInL);
+    const earInR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), dark);
+    earInR.position.set(0.22, 0.25, 0.05); headGroup.add(earInR);
+  }
   // 白目
   const eyeWhite = new THREE.MeshLambertMaterial({ color: 0xffffff });
   petWhiteL = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 8), eyeWhite);
@@ -618,11 +644,43 @@ function buildPet3D() {
   petEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), blk);
   petEyeR.position.set(0.1, 0.03, 0.28); petEyeR.scale.set(0.7, 1.1, 0.3);
   headGroup.add(petEyeR);
-  // 鼻
-  const noseM = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), nose);
-  noseM.position.set(0, -0.05, 0.36); noseM.scale.set(1.2, 0.8, 1); headGroup.add(noseM);
+  // 鼻（動物種で変える）
+  if (petAnimal === 'cat') {
+    // ネコ: 小さいピンクの三角鼻＋ひげ
+    const noseM = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), nose);
+    noseM.position.set(0, -0.04, 0.35); noseM.scale.set(1.3, 0.7, 1); headGroup.add(noseM);
+    const whiskerMat = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+    for (const side of [-1, 1]) {
+      for (let wi = 0; wi < 2; wi++) {
+        const w = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.16, 4), whiskerMat);
+        w.position.set(side * 0.2, -0.06 - wi * 0.03, 0.28);
+        w.rotation.z = Math.PI / 2 + side * (0.15 + wi * 0.12);
+        headGroup.add(w);
+      }
+    }
+  } else if (petAnimal === 'dog') {
+    // イヌ: 大きめの黒い鼻＋ちょっと出た舌
+    const noseM = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), blk);
+    noseM.position.set(0, -0.03, 0.4); noseM.scale.set(1.2, 0.9, 1); headGroup.add(noseM);
+    const tongue = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), nose);
+    tongue.position.set(0.03, -0.15, 0.3); tongue.scale.set(0.8, 0.5, 0.9); headGroup.add(tongue);
+  } else {
+    // クマ: ピンクの丸鼻
+    const noseM = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), nose);
+    noseM.position.set(0, -0.05, 0.36); noseM.scale.set(1.2, 0.8, 1); headGroup.add(noseM);
+  }
   petGroup.add(headGroup);
   petGroup.userData.head = headGroup;
+  // しっぽ（ネコ: 長い / イヌ: 上向きの太め / クマ: なし）
+  if (petAnimal === 'cat') {
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 0.45, 8), main);
+    tail.position.set(0, 0.35, -0.25); tail.rotation.x = -0.7; tail.rotation.z = 0.25;
+    petGroup.add(tail);
+  } else if (petAnimal === 'dog') {
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.3, 8), main);
+    tail.position.set(0, 0.42, -0.24); tail.rotation.x = -1.1;
+    petGroup.add(tail);
+  }
   // 手（縦長楕円＝ソーセージ型、Groupでピボット化）
   const armLGroup = new THREE.Group();
   armLGroup.position.set(-0.22, 0.4, 0.05);
@@ -836,6 +894,8 @@ function animate() {
     windowGlass.material.opacity = 0.1;
     // 窓の後ろの空も連動
     if (windowSky) windowSky.material.color.setHex(skyColor);
+    // ドアの外の空も同じ色に連動（ドアを開けた時に窓と同じ空が見える）
+    if (doorSky) doorSky.material.color.setHex(skyColor);
     // 背景色（ドアの隙間から見える空）も連動
     scene.background.setHex(skyColor);
   }

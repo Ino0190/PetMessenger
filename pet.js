@@ -442,7 +442,7 @@ function showDiary() {
 
 function renderDiaryPage() {
   const el = document.getElementById('diaryContent');
-  document.querySelector('.diary-card h3').textContent = '📔 ミハルのひみつにっき';
+  document.querySelector('.diary-card h3').textContent = '📔 ' + PET.name + 'のひみつにっき';
 
   if (PET.diary.length === 0) {
     el.innerHTML = '<p style="font-size:18px;text-align:center;padding:20px 0">まだ にっきは ないよ</p>';
@@ -453,14 +453,15 @@ function renderDiaryPage() {
   diaryPage = Math.max(0, Math.min(diaryPage, total - 1));
   const entry = PET.diary[diaryPage];
 
+  // 日記本文には他ユーザー由来の文字列（配達先ペット名）が含まれるため必ずエスケープする（保存型XSS対策）
   el.innerHTML = `
     <div style="text-align:center;margin-bottom:16px">
       <span style="font-size:14px;color:#a0855a">${diaryPage + 1} / ${total}</span>
     </div>
     <div style="text-align:center;margin-bottom:8px">
-      <span style="font-size:16px;color:#92400e;font-weight:600">${entry.date}</span>
+      <span style="font-size:16px;color:#92400e;font-weight:600">${esc(entry.date)}</span>
     </div>
-    <p style="font-size:18px;line-height:2;padding:12px 0;min-height:80px">${entry.text}</p>
+    <p style="font-size:18px;line-height:2;padding:12px 0;min-height:80px">${esc(entry.text)}</p>
     <div style="display:flex;justify-content:space-between;margin-top:20px">
       <button onclick="diaryPrev()" style="background:${diaryPage < total - 1 ? '#d97706' : '#ccc'};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:18px;cursor:pointer" ${diaryPage >= total - 1 ? 'disabled' : ''}>← まえ</button>
       <button onclick="diaryNext()" style="background:${diaryPage > 0 ? '#d97706' : '#ccc'};color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:18px;cursor:pointer" ${diaryPage <= 0 ? 'disabled' : ''}>つぎ →</button>

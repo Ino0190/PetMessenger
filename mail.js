@@ -208,11 +208,12 @@ async function sendMail() {
       // 相手のinboxに書き込み
       await db.collection('users').doc(recipientId).collection('inbox').add(mailData);
 
-      // ローカルの送信済みに追加
+      // ローカルの送信済みに追加（最大50件でlocalStorage肥大を防ぐ）
       MAIL_STORE.sent.push({
         ...mailData,
         id: 'sent_' + Date.now(),
       });
+      if (MAIL_STORE.sent.length > 50) MAIL_STORE.sent = MAIL_STORE.sent.slice(-50);
       localStorage.setItem('postpet_sent', JSON.stringify(MAIL_STORE.sent));
 
       renderMailList();
@@ -448,12 +449,13 @@ async function sendMailToAll(body) {
       });
       await batch.commit();
 
-      // ローカルの送信済みに追加
+      // ローカルの送信済みに追加（最大50件でlocalStorage肥大を防ぐ）
       MAIL_STORE.sent.push({
         ...mailData,
         to: '__all__',
         id: 'sent_' + Date.now(),
       });
+      if (MAIL_STORE.sent.length > 50) MAIL_STORE.sent = MAIL_STORE.sent.slice(-50);
       localStorage.setItem('postpet_sent', JSON.stringify(MAIL_STORE.sent));
 
       renderMailList();
@@ -500,9 +502,9 @@ async function petSendsSpontaneousMail() {
   } catch (e) { /* ignore */ }
 }
 
-// 30秒〜2分のランダム間隔でペットが勝手にメールを送る
+// 45秒ごとに15%の確率でペットが勝手にメールを送る（平均5分に1通くらい）
 setInterval(() => {
-  if (typeof PET !== 'undefined' && Math.random() < 0.3 && !PET.delivering) {
+  if (typeof PET !== 'undefined' && Math.random() < 0.15 && !PET.delivering) {
     petSendsSpontaneousMail();
   }
 }, 45000);
