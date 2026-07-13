@@ -577,6 +577,7 @@ function buildPet3D() {
   const white = new THREE.MeshLambertMaterial({ color: 0xffffff });
   const blk = new THREE.MeshLambertMaterial({ color: 0x333333 });
   const nose = new THREE.MeshLambertMaterial({ color: 0xe91e63 });
+  const earIn = new THREE.MeshLambertMaterial({ color: 0xffe0e6 }); // 耳の内側は白っぽいピンク
 
   // 体（小さめ。ネコは細身）
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), main);
@@ -590,17 +591,7 @@ function buildPet3D() {
   // 頭グループ（首振り・傾げ用）
   const headGroup = new THREE.Group();
   headGroup.position.y = 0.75;
-  let head;
-  if (petAnimal === 'cat') {
-    // ネコ: ダイヤモンド型（八面体）の頭。頬が張って顎が尖るひし形シルエット。
-    // toNonIndexed + computeVertexNormals でローポリのカクカクした面を出す
-    const headGeo = new THREE.OctahedronGeometry(0.33, 1).toNonIndexed();
-    headGeo.computeVertexNormals();
-    head = new THREE.Mesh(headGeo, main);
-    head.scale.set(1.1, 0.85, 0.95); // 横に広く・少し低く
-  } else {
-    head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), main);
-  }
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), main);
   head.castShadow = true; headGroup.add(head);
   // マズル（動物種で形を変える）
   const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), white);
@@ -618,9 +609,9 @@ function buildPet3D() {
     earL.position.set(-0.17, 0.33, 0); earL.rotation.z = 0.25; headGroup.add(earL);
     const earR = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 4), main);
     earR.position.set(0.17, 0.33, 0); earR.rotation.z = -0.25; headGroup.add(earR);
-    const earInL = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), dark);
+    const earInL = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), earIn);
     earInL.position.set(-0.17, 0.32, 0.03); earInL.rotation.z = 0.25; headGroup.add(earInL);
-    const earInR = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), dark);
+    const earInR = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), earIn);
     earInR.position.set(0.17, 0.32, 0.03); earInR.rotation.z = -0.25; headGroup.add(earInR);
   } else if (petAnimal === 'dog') {
     // イヌ: 横に垂れる耳（濃い色）
@@ -634,9 +625,9 @@ function buildPet3D() {
     earL.position.set(-0.22, 0.25, 0); headGroup.add(earL);
     const earR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), main);
     earR.position.set(0.22, 0.25, 0); headGroup.add(earR);
-    const earInL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), dark);
+    const earInL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), earIn);
     earInL.position.set(-0.22, 0.25, 0.05); headGroup.add(earInL);
-    const earInR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), dark);
+    const earInR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), earIn);
     earInR.position.set(0.22, 0.25, 0.05); headGroup.add(earInR);
   }
   // 白目
@@ -654,23 +645,16 @@ function buildPet3D() {
   petEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), blk);
   petEyeR.position.set(0.1, 0.03, 0.28); petEyeR.scale.set(0.7, 1.1, 0.3);
   headGroup.add(petEyeR);
-  if (petAnimal === 'cat') {
-    // ダイヤモンド型の頭は面の位置が球と違うので、目を面の上に出るよう調整
-    petWhiteL.position.z = petWhiteR.position.z = 0.29;
-    petEyeL.position.z = petEyeR.position.z = 0.305;
-    petWhiteL.scale.z = petWhiteR.scale.z = 0.35;
-    petEyeL.scale.z = petEyeR.scale.z = 0.4;
-  }
   // 鼻（動物種で変える）
   if (petAnimal === 'cat') {
-    // ネコ: 小さいピンクの三角鼻＋ひげ（ダイヤモンド型の頭の面に合わせた位置）
+    // ネコ: 小さいピンクの三角鼻＋ひげ
     const noseM = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), nose);
-    noseM.position.set(0, -0.04, 0.32); noseM.scale.set(1.3, 0.7, 1); headGroup.add(noseM);
+    noseM.position.set(0, -0.04, 0.35); noseM.scale.set(1.3, 0.7, 1); headGroup.add(noseM);
     const whiskerMat = new THREE.MeshBasicMaterial({ color: 0xcccccc });
     for (const side of [-1, 1]) {
       for (let wi = 0; wi < 2; wi++) {
         const w = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.16, 4), whiskerMat);
-        w.position.set(side * 0.18, -0.06 - wi * 0.03, 0.26);
+        w.position.set(side * 0.2, -0.06 - wi * 0.03, 0.28);
         w.rotation.z = Math.PI / 2 + side * (0.15 + wi * 0.12);
         headGroup.add(w);
       }
@@ -2179,8 +2163,9 @@ function buildVisitorPet(hexColor) {
   // 耳
   const eL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), main); eL.position.set(-0.22, 0.25, 0); headG.add(eL);
   const eR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), main); eR.position.set(0.22, 0.25, 0); headG.add(eR);
-  const earInL2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), darkM); earInL2.position.set(-0.22, 0.25, 0.05); headG.add(earInL2);
-  const earInR2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), darkM); earInR2.position.set(0.22, 0.25, 0.05); headG.add(earInR2);
+  const earInM = new THREE.MeshLambertMaterial({ color: 0xffe0e6 }); // 耳の内側は白っぽいピンク
+  const earInL2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), earInM); earInL2.position.set(-0.22, 0.25, 0.05); headG.add(earInL2);
+  const earInR2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), earInM); earInR2.position.set(0.22, 0.25, 0.05); headG.add(earInR2);
   // 目
   const eyeW = new THREE.MeshLambertMaterial({ color: 0xffffff });
   const wL = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 8), eyeW); wL.position.set(-0.1, 0.03, 0.27); wL.scale.set(0.7, 1.1, 0.25); headG.add(wL);

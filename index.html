@@ -349,11 +349,11 @@ body { background: #1a1a2e; font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic
     <p style="color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:6px;">いろ</p>
     <div id="setupColors" style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;">
       <button class="color-btn" data-color="#ffb347" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ffb347;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#ff8fa3" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#ff8fa3;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#a0d2db" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#a0d2db;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#c5a3ff" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#c5a3ff;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#fff9c4" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#fff9c4;" onclick="pickSetupColor(this)"></button>
-      <button class="color-btn" data-color="#b8e6c8" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#b8e6c8;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#e8437e" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#e8437e;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#3d9fd6" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#3d9fd6;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#8a5fdc" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#8a5fdc;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#33a95e" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#33a95e;" onclick="pickSetupColor(this)"></button>
+      <button class="color-btn" data-color="#95603f" style="width:40px;height:40px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:#95603f;" onclick="pickSetupColor(this)"></button>
     </div>
     <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
       <label style="color:rgba(255,255,255,0.5); font-size:14px;">じぶんで えらぶ</label>
@@ -439,6 +439,7 @@ function buildSetupPet(hexColor, animal) {
   const dark = ((Math.max(0,r-30))<<16)|((Math.max(0,g-30))<<8)|Math.max(0,b-30);
   const main = new THREE.MeshLambertMaterial({color:c});
   const darkM = new THREE.MeshLambertMaterial({color:dark});
+  const earInM = new THREE.MeshLambertMaterial({color:0xffe0e6}); // 耳の内側は白っぽいピンク
   const white = new THREE.MeshLambertMaterial({color:0xffffff});
   const blk = new THREE.MeshLambertMaterial({color:0x333333});
   const noseMat = new THREE.MeshLambertMaterial({color:0xe91e63});
@@ -459,9 +460,9 @@ function buildSetupPet(hexColor, animal) {
     earL.position.set(-0.16,0.92,0); earL.rotation.z=0.2;
     const earR = add(new THREE.Mesh(new THREE.ConeGeometry(0.08,0.16,4), main));
     earR.position.set(0.16,0.92,0); earR.rotation.z=-0.2;
-    const earInL = add(new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4), darkM));
+    const earInL = add(new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4), earInM));
     earInL.position.set(-0.16,0.92,0.03); earInL.rotation.z=0.2;
-    const earInR = add(new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4), darkM));
+    const earInR = add(new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4), earInM));
     earInR.position.set(0.16,0.92,0.03); earInR.rotation.z=-0.2;
     // 目（大きめ）
     add(new THREE.Mesh(new THREE.SphereGeometry(0.075,8,8), new THREE.MeshLambertMaterial({color:0xffffff}))).position.set(-0.09,0.72,0.22);
@@ -560,8 +561,8 @@ function buildSetupPet(hexColor, animal) {
     muzzle.position.set(0,0.67,0.22); muzzle.scale.set(1,0.7,0.8);
     add(new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), main)).position.set(-0.22,1.0,0);
     add(new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), main)).position.set(0.22,1.0,0);
-    add(new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), darkM)).position.set(-0.22,1.0,0.05);
-    add(new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), darkM)).position.set(0.22,1.0,0.05);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), earInM)).position.set(-0.22,1.0,0.05);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), earInM)).position.set(0.22,1.0,0.05);
     const eyeWhite = new THREE.MeshLambertMaterial({color:0xffffff});
     add(new THREE.Mesh(new THREE.SphereGeometry(0.085,8,8), eyeWhite)).position.set(-0.1,0.78,0.27);
     add(new THREE.Mesh(new THREE.SphereGeometry(0.085,8,8), eyeWhite)).position.set(0.1,0.78,0.27);
