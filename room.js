@@ -784,10 +784,13 @@ function animate() {
         // ゆっくり横を見る＋たまに首を傾げる
         h.rotation.y = Math.sin(PET.bobPhase * 0.4) * 0.25;
         h.rotation.z = Math.sin(PET.bobPhase * 0.25) * 0.1;
+        // 上下の傾き（ボール追従で下を向いた分）を正面に戻す
+        h.rotation.x *= 0.9;
       } else {
         // 歩行中等は正面に戻す
         h.rotation.y *= 0.9;
         h.rotation.z *= 0.9;
+        h.rotation.x *= 0.9;
       }
     }
   }
@@ -890,6 +893,29 @@ function onResize() {
   renderer.setSize(roomW, roomH);
 }
 
+// ペットの姿勢を完全にデフォルト（立ち姿）へ戻す
+// 寝転がり・座り・伸び・跳ね・窓見るなどのポーズを一括リセットする
+function resetPetPose() {
+  if (!petGroup) return;
+  petGroup.rotation.x = 0;
+  petGroup.rotation.z = 0;
+  petGroup.position.y = 0;
+  if (petGroup.userData.head) {
+    petGroup.userData.head.rotation.x = 0;
+    petGroup.userData.head.rotation.z = 0;
+  }
+  if (petGroup.userData.armL) {
+    petGroup.userData.armL.rotation.x = 0;
+    petGroup.userData.armR.rotation.x = 0;
+    petGroup.userData.armL.rotation.z = -0.35;
+    petGroup.userData.armR.rotation.z = 0.35;
+    petGroup.userData.legL.rotation.x = 0;
+    petGroup.userData.legR.rotation.x = 0;
+    petGroup.userData.legL.rotation.z = 0;
+    petGroup.userData.legR.rotation.z = 0;
+  }
+}
+
 // 3Dクリック（レイキャスト → 床の交点を取得）
 function onRoomClick3D(e) {
   if (typeof PET !== 'undefined' && PET.delivering) return;
@@ -902,21 +928,7 @@ function onRoomClick3D(e) {
     if (wasPosing) {
       PET.state = 'idle';
       PET.stateTimer = 0;
-      if (petGroup) {
-        petGroup.rotation.x = 0;
-        petGroup.rotation.z = 0;
-        petGroup.position.y = 0;
-        if (petGroup.userData.armL) {
-          petGroup.userData.armL.rotation.x = 0;
-          petGroup.userData.armR.rotation.x = 0;
-          petGroup.userData.armL.rotation.z = -0.35;
-          petGroup.userData.armR.rotation.z = 0.35;
-          petGroup.userData.legL.rotation.x = 0;
-          petGroup.userData.legR.rotation.x = 0;
-          petGroup.userData.legL.rotation.z = 0;
-          petGroup.userData.legR.rotation.z = 0;
-        }
-      }
+      resetPetPose();
     }
   }
 

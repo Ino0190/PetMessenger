@@ -273,8 +273,10 @@ function petAction(action) {
     showToast('ミハルは おでかけちゅう だよ');
     return;
   }
-  // 寝ていたら起こす
-  if (PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting') {
+  // 寝ている・ポーズ中なら必ず起き上がってから動作する
+  const posing = PET.state === 'sleep' || PET.state === 'lyingOnRug' || PET.state === 'sitting'
+    || PET.state === 'stretch' || PET.state === 'hopping' || PET.state === 'lookWindow';
+  if (posing) {
     wakeUpPet();
   }
   switch (action) {
@@ -649,8 +651,11 @@ function wakeUpPet() {
   PET.reaction = '😳';
   PET.reactionTimer = 30;
   showToast(PET.name + ' おきたよ！');
-  // 3Dのポーズをリセット
-  if (typeof petGroup !== 'undefined' && petGroup) {
+  // 3Dのポーズを完全にリセット（体の回転・頭・手足すべて立ち姿に戻す）
+  if (typeof resetPetPose === 'function') {
+    resetPetPose();
+  } else if (typeof petGroup !== 'undefined' && petGroup) {
+    // フォールバック
     petGroup.rotation.x = 0;
     petGroup.rotation.z = 0;
     petGroup.position.y = 0;

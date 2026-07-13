@@ -397,7 +397,7 @@ function updateRoomInfo(memberCount) {
     }
   }
   if (myRoom) {
-    infoEl.innerHTML = '🏠 クラスルーム: <strong style="color:rgba(255,255,255,0.8)">' + esc(myRoom) + '</strong> (' + memberCount + '人)';
+    infoEl.innerHTML = '🏠 あいことば: <strong style="color:rgba(255,255,255,0.8)">' + esc(myRoom) + '</strong> (' + memberCount + '人)';
   } else {
     infoEl.innerHTML = '⚠️ あいことばが ないので、みんなが みえるよ';
   }
